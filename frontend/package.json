@@ -1,0 +1,13 @@
+{
+    "name": "frontend",
+    "version": "1.0.0",
+    "description": "Pai Kang Frontend",
+    "main": "index.html",
+    "scripts": {
+      "start": "serve ."
+    },
+    "dependencies": {
+      "serve": "^14.2.0"
+    }
+  }
+  

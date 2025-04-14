@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>358 Online</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols&display=swap">
+</head>
+<body>
+  <div class="game-container">
+    <header>
+      <h1>358 Online <span class="emoji">🂴</span></h1>
+      <div class="lobby-controls">
+        <input type="text" id="playerName" placeholder="Il tuo nome"/>
+        <button id="create">Crea partita</button>
+        <select id="maxPlayers">
+          <option value="3">3 giocatori</option>
+          <option value="4">4 giocatori</option>
+        </select>
+        <input type="text" id="roomCode" placeholder="Codice stanza"/>
+        <button id="join">Entra nella partita</button>
+        <button id="startGame" style="display:none;">Avvia Partita</button>
+      </div>
+      <p id="status" tabindex="0">In attesa dei giocatori...</p>
+    </header>
+
+    <main>
+      <div class="table">
+        <div class="player top">
+          <div class="name">pollo</div>
+          <div class="hand other-hand" id="top-hand"></div>
+          <div class="discards">
+            <div class="pile pile-k" id="top-pile-k"></div>
+            <div class="pile pile-normal" id="top-pile"></div>
+          </div>
+        </div>
+    
+        <div class="player right">
+          <div class="name">Giocatore 2</div>
+          <div class="discards">
+            <div class="pile pile-k" id="right-pile-k"></div>
+            <div class="pile pile-normal" id="right-pile"></div>
+          </div>
+          <div class="hand other-hand" id="right-hand"></div>
+        </div>
+    
+        <div class="player bottom">
+          <div class="name">Tu</div>
+          <div class="discards">
+            <div class="pile pile-k" id="bottom-pile-k"></div>
+            <div class="pile pile-normal" id="bottom-pile"></div>
+          </div>
+          <div class="hand" id="bottom-hand"></div>
+        </div>
+    
+        <div class="player left">
+          <div class="name">Giocatore 3</div>
+          <div class="discards">
+            <div class="pile pile-k" id="left-pile-k"></div>
+            <div class="pile pile-normal" id="left-pile"></div>
+          </div>
+          <div class="hand other-hand" id="left-hand"></div>
+        </div>
+      </div>
+  
+      <section id="actions" style="display: none;">
+        <div class="hand" id="hand"></div>
+        <div class="action-buttons">
+          <button id="drawBtn">Pesca</button>
+          <button id="discardBtn">Scarta</button>
+          <button id="kangBtn">Kang</button>
+          <button id="autoDiscardBtn" style="display: none;">Scarta automaticamente</button>
+        </div>
+      </section>
+
+      <aside class="scoreboard">
+        <h2>Punteggi</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Vittorie</th>
+            </tr>
+          </thead>
+          <tbody id="scoreTable"></tbody>
+        </table>
+      </aside>
+
+      <h2>Giocatori nella stanza</h2>
+      <ul id="playersList"></ul>
+    </main>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
