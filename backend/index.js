@@ -91,6 +91,12 @@ io.on('connection', (socket) => {
     });
   
     room.lastDiscarded = { value: cardList[0].value };
+
+    if (!room.lastDiscardedKCounts) room.lastDiscardedKCounts = {};
+
+const kingCount = cardList.filter(c => c.value === 'K').length;
+room.lastDiscardedKCounts[socket.id] = (room.lastDiscardedKCounts[socket.id] || 0) + kingCount;
+
   
     io.to(socket.id).emit('cardDiscarded', cardList);
     room.players.forEach(p => {
