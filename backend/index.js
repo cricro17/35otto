@@ -9,7 +9,7 @@ const { createDeck, dealHands, evaluateHand } = require('./game');
 const app = express();
 const path = require('path');
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
