@@ -178,7 +178,6 @@ room.lastDiscardedKCounts[socket.id] = (room.lastDiscardedKCounts[socket.id] || 
     });
     
   });
-});
 
 socket.on('newRound', () => {
   const code = findPlayerRoom(socket.id);
@@ -236,7 +235,7 @@ socket.on('newRound', () => {
     });
   }
 });
-
+})
 
 function startGame(code) {
   const room = rooms[code];
