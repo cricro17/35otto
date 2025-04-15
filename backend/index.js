@@ -180,6 +180,62 @@ room.lastDiscardedKCounts[socket.id] = (room.lastDiscardedKCounts[socket.id] || 
   });
 });
 
+socket.on('newRound', () => {
+  const code = findPlayerRoom(socket.id);
+  const room = rooms[code];
+  if (!room || room.hostId !== socket.id) return;
+
+  // Reset parziali per nuova mano
+  room.deck = createDeck();
+  const hands = dealHands(room.deck, room.maxPlayers);
+  room.turnIndex = 0;
+  room.phase = 'draw';
+  room.lastDiscarded = null;
+  room.lastDiscardedKCounts = {};
+
+  room.players.forEach((p, i) => {
+    const hand = hands[i];
+    const result = evaluateHand(hand);
+    room.hands[p.id] = hand;
+
+    io.to(p.id).emit('initialHand', {
+      hand,
+      special: result,
+      playerIndex: i,
+      totalPlayers: room.players.length,
+      allPlayers: room.players.map(pl => pl.id)
+    });
+
+    if (result) {
+      room.players.forEach(pp => {
+        io.to(pp.id).emit('gameEnded', {
+          winner: p.id,
+          reason: `ha una combinazione speciale: ${result.combination}`
+        });
+      });
+    }
+  });
+
+  // Avvia turno solo se nessuno ha vinto subito
+  const winnerFound = room.players.some((p, i) =>
+    evaluateHand(hands[i]) !== null
+  );
+
+  if (!winnerFound) {
+    const next = getCurrentPlayer(room);
+    room.players.forEach(p => {
+      if (p.id === next) {
+        io.to(p.id).emit('yourTurn');
+      } else {
+        const nextPlayer = room.players.find(pl => pl.id === next);
+        io.to(p.id).emit('someoneTurn', {
+          id: nextPlayer.id,
+          name: nextPlayer.name
+        });
+      }
+    });
+  }
+});
 
 
 function startGame(code) {
