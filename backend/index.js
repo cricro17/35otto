@@ -145,22 +145,32 @@ io.on('connection', (socket) => {
   
     const winnerName = room.players.find(p => p.id === winnerId)?.name || "Qualcuno";
   
+    const finalScores = room.players.map(p => {
+      const isWinner = p.id === winnerId;
+      return {
+        name: p.name,
+        balance: isWinner ? totalWinnings : -gainPerOpponent
+      };
+    });
+    
     room.players.forEach(p => {
       const hand = room.hands[p.id];
       const score = calculatePoints(hand);
-      const win = p.id === winnerId;
-  
+      const isWinner = p.id === winnerId;
+    
       io.to(p.id).emit('gameEnded', {
         winner: winnerId,
-        reason: win
+        winnerName,
+        reason: isWinner
           ? `ha vinto con ${score} punti! (+${acesInHand} A, +${discardedKings} K scartati, x${totalOpponents} avversari)`
           : `ha perso con ${score} punti.`,
-        totalWinnings: win ? totalWinnings : -gainPerOpponent,
+        totalWinnings: isWinner ? totalWinnings : -gainPerOpponent,
         aces: acesInHand,
         kings: discardedKings,
-        winnerName: winnerName
+        finalScores
       });
     });
+    
   });
 });
 
