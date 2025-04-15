@@ -76,31 +76,57 @@ io.on('connection', (socket) => {
     const code = findPlayerRoom(socket.id);
     const room = rooms[code];
     if (!room || room.phase !== 'discard' || getCurrentPlayer(room) !== socket.id) return;
-
+  
     const hand = room.hands[socket.id];
     const cardList = Array.isArray(cards) ? cards : [cards];
-
+  
     cardList.forEach(c => {
       const i = hand.findIndex(h => h.value === c.value && h.suit === c.suit);
       if (i !== -1) hand.splice(i, 1);
     });
-
+  
     io.to(code).emit('updateOpponentHand', {
       playerId: socket.id,
       cardsLeft: hand.length
     });
-
+  
     room.lastDiscarded = { value: cardList[0].value };
+  
     io.to(socket.id).emit('cardDiscarded', cardList);
     room.players.forEach(p => {
-    if (p.id !== socket.id) {
-    io.to(p.id).emit('cardDiscardedByOther', {
-      from: socket.id,
-      cards: cardList
+      if (p.id !== socket.id) {
+        io.to(p.id).emit('cardDiscardedByOther', {
+          from: socket.id,
+          cards: cardList
+        });
+      }
     });
-  }
-});
-})
+  
+    // ✅ LOGICA TURNO SUCCESSIVO
+    room.turnIndex = (room.turnIndex + 1) % room.players.length;
+    const next = getCurrentPlayer(room);
+    const nextHand = room.hands[next];
+    room.phase = 'draw';
+  
+    room.players.forEach(p => {
+      if (p.id === next) {
+        io.to(p.id).emit('yourTurn');
+      } else {
+        const nextPlayer = room.players.find(pl => pl.id === next);
+        io.to(p.id).emit('someoneTurn', {
+          id: nextPlayer.id,
+          name: nextPlayer.name
+        });
+      }
+    });
+  
+    const match = nextHand.find(c => c.value === room.lastDiscarded.value);
+    if (match) {
+      room.phase = 'discard';
+      io.to(next).emit('canAutoDiscard', match);
+    }
+  });
+  
 
 // Prossimo turno
 room.turnIndex = (room.turnIndex + 1) % room.players.length;
