@@ -295,21 +295,26 @@ button:hover {
 }
 
 /* Tooltip pila normale */
+
 .pile-normal:hover::after {
   content: attr(data-fullstack);
   position: absolute;
-  bottom: 100%;
+  bottom: 110%;
   left: 50%;
   transform: translateX(-50%);
-  background: #111;
+  background: rgba(20, 20, 20, 0.95);
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.75rem;
   padding: 6px 10px;
-  border-radius: 5px;
-  white-space: pre-line; /* 👈 cambia qui! */
+  border-radius: 6px;
+  white-space: pre-line;
   text-align: center;
-  z-index: 99;
+  z-index: 1000;
+  max-width: 140px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  word-wrap: break-word;
 }
+
 
 /* Top e bottom: pila sopra mano */
 .player.bottom .discards {
@@ -350,6 +355,28 @@ button:hover {
 
 .player.right .discards {
   margin-left: -135px;
+}
+
+.pile {
+  position: relative;
+  width: 60px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible; /* mostra le carte che escono dal contenitore */
+}
+
+.pile .card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: bottom center;
+  filter: grayscale(60%);
+  opacity: 0.85;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+  transform: scale(0.95);
+  transition: transform 0.2s;
 }
 
 /* Nascondi il giocatore top se siamo in 3 */

@@ -306,6 +306,20 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
   }
 
   playerHand = hand;
+
+  ['bottom', 'top', 'left', 'right'].forEach(pos => {
+    const pile = document.getElementById(`${pos}-pile`);
+    const pileK = document.getElementById(`${pos}-pile-k`);
+    if (pile) {
+      pile.innerHTML = '';
+      pile.dataset.fullstack = '';
+    }
+    if (pileK) {
+      pileK.innerHTML = '';
+      pileK.dataset.count = 0;
+    }
+  });
+
   localPlayerIndex = playerIndex;
 
   if (firstDeal) {
@@ -407,21 +421,33 @@ socket.on('cardDiscarded', (cards) => {
       }
     }
     else {
-      const pile = document.getElementById('bottom-pile');
-      const span = document.createElement('span');
-      span.className = 'card';
-      span.innerText = `${card.value}${card.suit}`;
-      span.classList.add('discard-animate');
-      span.addEventListener('animationend', () => {
-        span.classList.remove('discard-animate');
-      });
-      pile.innerHTML = '';
-      pile.appendChild(span)
-
-
-      pile.dataset.fullstack = (pile.dataset.fullstack ? pile.dataset.fullstack + ', ' : '') + `${card.value}${card.suit}`;
-      span.setAttribute('data-fullstack', pile.dataset.fullstack);
-    }
+      
+        const pile = document.getElementById('bottom-pile');
+        if (!pile) return;
+      
+        pile.innerHTML = ''; // Reset una volta sola
+      
+        cards.forEach((card, i) => {
+          const span = document.createElement('span');
+          span.className = 'card';
+          span.innerText = `${card.value}${card.suit}`;
+          span.classList.add('discard-animate');
+      
+          span.style.zIndex = i;
+          span.style.position = 'absolute';
+          span.style.top = '0';
+          span.style.left = '0';
+          span.style.transform = `rotate(${(i - cards.length / 2) * 8}deg) scale(0.95)`;
+          span.style.transformOrigin = 'bottom center';
+      
+          span.addEventListener('animationend', () => {
+            span.classList.remove('discard-animate');
+          });
+      
+          pile.appendChild(span);
+        });
+      }
+      
   }); // ✅ questa parentesi chiude il forEach!
 
   selectedIndexes = [];
