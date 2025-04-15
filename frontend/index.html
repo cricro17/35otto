@@ -23,6 +23,7 @@
         <button id="startGame" style="display:none;">Avvia Partita</button>
       </div>
       <p id="status" tabindex="0">In attesa dei giocatori...</p>
+      <button id="newRoundBtn" style="display:none; margin-top: 10px;">Nuova Mano</button>
     </header>
 
     <main>
@@ -96,6 +97,12 @@
 
       <h2>Giocatori nella stanza</h2>
       <ul id="playersList"></ul>
+      <table id="scoreTable" style="margin-top: 20px; display: none;">
+        <thead>
+          <tr><th>Giocatore</th><th>Saldo (€)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>      
     </main>
   </div>
 

@@ -201,6 +201,20 @@ function updateKingPile(pileId, card, count) {
   }
 }
 
+function updateScoreTable(scores) {
+  const table = document.getElementById('scoreTable');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+
+  scores.forEach(({ name, balance }) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${name}</td><td>${balance.toFixed(2)}€</td>`;
+    tbody.appendChild(row);
+  });
+
+  table.style.display = 'table';
+}
+
 
 // Socket Events
 socket.on('playerListUpdate', renderPlayersList);
@@ -450,6 +464,7 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason }) => {
     }
 
     setTimeout(() => overlay.classList.add('hidden'), 4000);
+    document.getElementById('newRoundBtn').style.display = isHost ? 'inline-block' : 'none';
   }
 
   // 💰 Overlay animazione vincita
@@ -491,6 +506,8 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason }) => {
   }, 50);
 
   setTimeout(() => winOverlay.remove(), 4000);
+  if (Array.isArray(finalScores)) updateScoreTable(finalScores);
+
 });
 
 
@@ -570,3 +587,10 @@ document.getElementById('kangBtn').onclick = () => {
   if (!isMyTurn) return;
   socket.emit('kang');
 };
+
+document.getElementById('newRoundBtn').onclick = () => {
+  socket.emit('newRound');
+  document.getElementById('newRoundBtn').style.display = 'none';
+  updateStatus('🔄 Inizio nuova mano...');
+};
+
