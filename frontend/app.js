@@ -207,7 +207,7 @@ function renderHandAnimated(cards, containerId, withSound = false) {
       if (withSound) dealSound.cloneNode(true).play();
     }, i * 250);
 
-    container.Child(btn);
+    container.appendChild(btn);
   });
 }
 
