@@ -11,6 +11,7 @@ let playerName = '';
 let firstDeal = true;
 const playerNames = {};
 let discardMap = [];
+let roundNUmber = 1;
 
 const statusEl = document.getElementById('status');
 const createBtn = document.getElementById('create');
@@ -324,6 +325,18 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
 
   if (firstDeal) {
     playerHand = sortHandByValueDesc(hand);
+    const roundLabel = document.getElementById('roundCounter');
+if (roundLabel) {
+  roundLabel.textContent = `Mano n°${roundNumber}`;
+  roundNumber++;
+  roundLabel.classList.remove('hidden');
+  roundLabel.style.animation = 'none';
+  void roundLabel.offsetHeight; // forza reflow per riattivare animazione
+  roundLabel.style.animation = 'fadeOut 3s ease forwards';
+  setTimeout(() => roundLabel.classList.add('hidden'), 3000);
+}
+
+
     renderHandAnimated(playerHand, 'bottom-hand', true);
     firstDeal = false;
   } else {
@@ -348,6 +361,19 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
   if (special) {
     updateStatus(`✨ Hai una combinazione speciale: ${special.combination} (x${special.multiplier})`);
   }
+
+  ['bottom', 'top', 'left', 'right'].forEach(pos => {
+    const normalPile = document.getElementById(`${pos}-pile`);
+    const kingPile = document.getElementById(`${pos}-pile-k`);
+    if (normalPile) {
+      normalPile.innerHTML = '';
+      normalPile.dataset.fullstack = '';
+    }
+    if (kingPile) {
+      kingPile.innerHTML = '';
+      kingPile.dataset.count = '0';
+    }
+  });
 });
 
 socket.on('yourTurn', () => {
@@ -389,66 +415,67 @@ socket.on('cardDrawn', (card) => {
 });
 
 
-socket.on('cardDiscarded', (cards) => { 
+socket.on('cardDiscarded', (cards) => {
+  // Rimuove le carte dalla mano del giocatore
   cards.forEach(card => {
     const index = playerHand.findIndex(c =>
       c.value === card.value && c.suit === card.suit
     );
     if (index !== -1) playerHand.splice(index, 1);
+  });
 
+  // Gestione pile scarti
+  const pile = document.getElementById('bottom-pile');
+  if (!pile) return;
+  pile.innerHTML = ''; // ✅ Reset UNA volta sola
+
+  cards.forEach((card, i) => {
     if (card.value === 'K') {
       const pileK = document.getElementById('bottom-pile-k');
       const current = parseInt(pileK.dataset.count || '0');
       const newCount = current + 1;
       pileK.dataset.count = newCount;
-    
+
       pileK.innerHTML = '';
-    
       const span = document.createElement('span');
       span.className = `card ${getSuitName(card.suit)} king-animate`;
       span.innerText = `${card.value}${card.suit}`;
       pileK.appendChild(span);
-    
+
       span.addEventListener('animationend', () => {
         span.classList.remove('king-animate');
       });
-    
+
       if (newCount > 1) {
         const badge = document.createElement('div');
         badge.className = 'king-counter';
         badge.innerText = `+${newCount}`;
         pileK.appendChild(badge);
       }
+
+    } else {
+      const span = document.createElement('span');
+      span.className = 'card';
+      span.innerText = `${card.value}${card.suit}`;
+      span.classList.add('discard-animate');
+
+      span.style.zIndex = i;
+      span.style.position = 'absolute';
+      span.style.top = `${i * 16}px`;
+      span.style.left = '0';
+      span.style.transform = 'scale(0.9)';
+      span.style.opacity = 0.95;
+      span.style.filter = 'grayscale(40%)';
+      span.style.boxShadow = '0 0 4px rgba(0,0,0,0.6)';
+      span.style.borderRadius = '6px';
+
+      span.addEventListener('animationend', () => {
+        span.classList.remove('discard-animate');
+      });
+
+      pile.appendChild(span);
     }
-    else {
-      
-        const pile = document.getElementById('bottom-pile');
-        if (!pile) return;
-      
-        pile.innerHTML = ''; // Reset una volta sola
-      
-        cards.forEach((card, i) => {
-          const span = document.createElement('span');
-          span.className = 'card';
-          span.innerText = `${card.value}${card.suit}`;
-          span.classList.add('discard-animate');
-      
-          span.style.zIndex = i;
-          span.style.position = 'absolute';
-          span.style.top = '0';
-          span.style.left = '0';
-          span.style.transform = `rotate(${(i - cards.length / 2) * 8}deg) scale(0.95)`;
-          span.style.transformOrigin = 'bottom center';
-      
-          span.addEventListener('animationend', () => {
-            span.classList.remove('discard-animate');
-          });
-      
-          pile.appendChild(span);
-        });
-      }
-      
-  }); // ✅ questa parentesi chiude il forEach!
+  });
 
   selectedIndexes = [];
   playerHand = sortHandByValueDesc(playerHand);
@@ -468,52 +495,62 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
   const pile = document.getElementById(`${pos}-pile`);
   if (!pile || !pileK) return;
 
-  cards.forEach(card => {
+  pileK.innerHTML = '';
+  pile.innerHTML = '';
+  pile.dataset.fullstack = '';
+  let kingCount = 0;
+
+  cards.forEach((card, i) => {
     const text = `${card.value}${card.suit}`;
 
     if (card.value === 'K') {
-      const current = parseInt(pileK.dataset.count || '0');
-      const newCount = current + 1;
-      pileK.dataset.count = newCount;
-    
-      pileK.innerHTML = ''; // pulisce per mostrare solo l'ultima
-    
+      kingCount++;
       const span = document.createElement('span');
       span.className = `card ${getSuitName(card.suit)} king-animate`;
-      span.innerText = `${card.value}${card.suit}`;
+      span.innerText = text;
       pileK.appendChild(span);
-    
+
       span.addEventListener('animationend', () => {
         span.classList.remove('king-animate');
       });
-    
-      if (newCount > 1) {
-        const badge = document.createElement('div');
-        badge.className = 'king-counter';
-        badge.innerText = `+${newCount}`;
-        pileK.appendChild(badge);
-      }
-    }
-     else {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerText = text;
-      div.classList.add('discard-animate');
-      div.addEventListener('animationend', () => {
-        div.classList.remove('discard-animate');
+
+    } else {
+      const span = document.createElement('span');
+      span.className = 'card discard-animate';
+      span.innerText = text;
+
+      span.style.zIndex = i;
+      span.style.position = 'absolute';
+      span.style.top = `${i * 16}px`;
+      span.style.left = '0';
+      span.style.transform = 'scale(0.9)';
+      span.style.opacity = 0.95;
+      span.style.filter = 'grayscale(40%)';
+      span.style.boxShadow = '0 0 4px rgba(0,0,0,0.6)';
+      span.style.borderRadius = '6px';
+
+      span.addEventListener('animationend', () => {
+        span.classList.remove('discard-animate');
       });
 
-      pile.innerHTML = '';
-      pile.appendChild(div);
+      pile.appendChild(span);
 
-      pile.dataset.fullstack = (pile.dataset.fullstack ? pile.dataset.fullstack + ', ' : '') + text;
-      div.setAttribute('data-fullstack', pile.dataset.fullstack);
+      // Aggiorna tooltip pile-normal
+      pile.dataset.fullstack = (pile.dataset.fullstack ? pile.dataset.fullstack + '\n' : '') + text;
+      span.setAttribute('data-fullstack', pile.dataset.fullstack);
     }
   });
+
+  if (kingCount > 0) {
+    pileK.dataset.count = kingCount;
+    if (kingCount > 1) {
+      const badge = document.createElement('div');
+      badge.className = 'king-counter';
+      badge.innerText = `+${kingCount}`;
+      pileK.appendChild(badge);
+    }
+  }
 });
-
-
-
 
 socket.on('canAutoDiscard', (card) => {
   isMyTurn = true;
