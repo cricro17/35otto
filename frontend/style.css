@@ -441,3 +441,37 @@ button:hover {
   animation: drawIn 0.5s ease-out;
   z-index: 2;
 }
+
+@media (max-width: 600px) {
+  .card, .card-back {
+    width: 36px;
+    height: 54px;
+    font-size: 1rem;
+  }
+
+  .pile-k span {
+    transform: scale(0.8);
+  }
+
+  .player .name {
+    font-size: 0.8rem;
+  }
+
+  .player .discards {
+    gap: 4px;
+  }
+
+  .hand {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .table {
+    padding: 10px;
+  }
+
+  .bottom-hand {
+  max-width: 100vw;
+  overflow-x: auto;
+}
+}
