@@ -92,13 +92,15 @@ function updateSummaryTable() {
 
   Object.entries(playerStats).forEach(([name, { total, hands }]) => {
     const row = document.createElement('tr');
+    const balanceClass = total >= 0 ? 'balance-positive' : 'balance-negative';
+  
     row.innerHTML = `
       <td>${name}</td>
-      <td>${total.toFixed(2)}€</td>
+      <td class="${balanceClass}">${total.toFixed(2)}€</td>
       <td>${hands}</td>
     `;
     tbody.appendChild(row);
-  });
+  });  
 }
 
 
