@@ -21,6 +21,40 @@ const nameInput = document.getElementById('playerName');
 const playersList = document.getElementById('playersList');
 const autoBtn = document.getElementById('autoDiscardBtn');
 const dealSound = new Audio('deal.mp3');
+const style = document.createElement('style');
+style.innerHTML = `
+#winnerOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  overflow: hidden;
+}
+.winner-message {
+  font-size: 3rem;
+  color: gold;
+  font-weight: bold;
+  text-shadow: 2px 2px 5px #000;
+  z-index: 2;
+}
+.coin {
+  position: absolute;
+  top: -50px;
+  font-size: 2rem;
+  animation: dropCoin linear forwards;
+  color: gold;
+  z-index: 1;
+}
+@keyframes dropCoin {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}`;
+document.head.appendChild(style);
 
 function updateStatus(msg) {
   statusEl.innerText = '';
@@ -388,16 +422,17 @@ socket.on('notYourTurn', () => {
   updateButtons();
 });
 
-socket.on('gameEnded', ({ winner, reason }) => {
-  const name = playerNames[winner] || 'Qualcuno';
+socket.on('gameEnded', ({ winner, winnerName, reason, totalWinnings }) => {
+  const name = playerNames[winner] || winnerName || 'Qualcuno';
   const isMe = winner === socket.id;
+
   const msg = isMe
     ? `🏆 Hai vinto! ${reason}`
     : `💀 ${name} ${reason}`;
+
   updateStatus(msg);
   document.getElementById('actions').style.display = 'none';
 
-  // 🎬 Overlay con combo speciale
   const overlay = document.getElementById('specialOverlay');
   const comboTitle = overlay.querySelector('.combo-title');
   const comboPlayer = overlay.querySelector('.combo-player');
@@ -409,7 +444,7 @@ socket.on('gameEnded', ({ winner, reason }) => {
     comboPlayer.textContent = `di ${name}`;
     overlay.classList.remove('hidden');
 
-    const drumroll = new Audio('drumroll.mp3'); // caricalo in /frontend
+    const drumroll = new Audio('drumroll.mp3');
     drumroll.play();
 
     if (isMe) {
@@ -418,11 +453,29 @@ socket.on('gameEnded', ({ winner, reason }) => {
       setTimeout(() => cards.forEach(c => c.classList.remove('special-animate')), 4000);
     }
 
-    setTimeout(() => {
-      overlay.classList.add('hidden');
-    }, 4000);
+    setTimeout(() => overlay.classList.add('hidden'), 4000);
   }
+
+  // Animazione vincita con monete
+  const winOverlay = document.createElement('div');
+  winOverlay.id = 'winnerOverlay';
+  winOverlay.innerHTML = `
+    <div class="winner-message">🎉 ${name} ha vinto ${totalWinnings}€</div>
+  `;
+  document.body.appendChild(winOverlay);
+
+  for (let i = 0; i < 30; i++) {
+    const coin = document.createElement('div');
+    coin.className = 'coin';
+    coin.style.left = Math.random() * 100 + 'vw';
+    coin.style.animationDuration = (Math.random() * 1 + 1.5) + 's';
+    coin.innerText = '💰';
+    winOverlay.appendChild(coin);
+  }
+
+  setTimeout(() => winOverlay.remove(), 4000);
 });
+
 
 
 socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {

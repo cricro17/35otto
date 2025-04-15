@@ -127,26 +127,38 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Aggiornamento funzione gameEnded nel backend
   socket.on('kang', () => {
     console.log(`[SERVER] ${socket.id} ha chiamato kang`);
     const roomCode = findPlayerRoom(socket.id);
     const room = rooms[roomCode];
     if (!room || !room.hands) return;
-
-    const scores = room.players.map(p => {
-      const hand = room.hands[p.id];
-      return {
-        playerId: p.id,
-        score: calculatePoints(hand)
-      };
-    });
-
-    const winner = scores.reduce((min, p) => p.score < min.score ? p : min, scores[0]);
-
+  
+    const winnerId = socket.id;
+    const winnerHand = room.hands[winnerId];
+    const discardedKings = room.lastDiscardedKCounts?.[winnerId] || 0;
+    const acesInHand = winnerHand.filter(c => c.value === 'A').length;
+    const totalOpponents = room.players.length - 1;
+    const base = 1;
+    const gainPerOpponent = (base + acesInHand + discardedKings);
+    const totalWinnings = gainPerOpponent * totalOpponents;
+  
+    const winnerName = room.players.find(p => p.id === winnerId)?.name || "Qualcuno";
+  
     room.players.forEach(p => {
+      const hand = room.hands[p.id];
+      const score = calculatePoints(hand);
+      const win = p.id === winnerId;
+  
       io.to(p.id).emit('gameEnded', {
-        winner: winner.playerId,
-        reason: `ha vinto con ${winner.score} punti!`
+        winner: winnerId,
+        reason: win
+          ? `ha vinto con ${score} punti! (+${acesInHand} A, +${discardedKings} K scartati, x${totalOpponents} avversari)`
+          : `ha perso con ${score} punti.`,
+        totalWinnings: win ? totalWinnings : -gainPerOpponent,
+        aces: acesInHand,
+        kings: discardedKings,
+        winnerName: winnerName
       });
     });
   });
