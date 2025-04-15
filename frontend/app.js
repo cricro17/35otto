@@ -22,6 +22,7 @@ const playersList = document.getElementById('playersList');
 const autoBtn = document.getElementById('autoDiscardBtn');
 const dealSound = new Audio('deal.mp3');
 const style = document.createElement('style');
+const playerStats = {};
 style.innerHTML = `
 #winnerOverlay {
   position: fixed;
@@ -81,6 +82,25 @@ function updateScoreTable(scores) {
     balanceTable.style.display = 'table';
   }
 }
+
+function updateSummaryTable() {
+  const table = document.getElementById('summaryTable');
+  if (!table) return;
+
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+
+  Object.entries(playerStats).forEach(([name, { total, hands }]) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${name}</td>
+      <td>${total.toFixed(2)}€</td>
+      <td>${hands}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
 
 // ⚠️ FIX ANIMATION BUG
 function renderHandAnimated(cards, containerId, withSound = false) {
@@ -571,6 +591,19 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores
   setTimeout(() => winOverlay.remove(), 4000);
   if (Array.isArray(finalScores)) updateScoreTable(finalScores);
 
+  if (Array.isArray(finalScores)) {
+    updateScoreTable(finalScores);
+  
+    finalScores.forEach(({ name, balance }) => {
+      if (!playerStats[name]) {
+        playerStats[name] = { total: 0, hands: 0 };
+      }
+      playerStats[name].total += balance;
+      playerStats[name].hands += 1;
+    });
+  
+    updateSummaryTable();
+  }
 });
 
 
