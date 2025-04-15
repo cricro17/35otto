@@ -214,6 +214,14 @@ socket.on('yourTurn', () => {
   updateButtons();
 });
 
+socket.on('someoneTurn', ({ name }) => {
+  updateStatus(`⏳ È il turno di ${name}`);
+  isMyTurn = false;
+  currentPhase = null;
+  document.getElementById('actions').style.display = 'none';
+  updateButtons();
+});
+
 socket.on('cardDrawn', (card) => {
   playerHand.push(card);
   playerHand = sortHandByValueDesc(playerHand);

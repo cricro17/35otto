@@ -93,28 +93,40 @@ io.on('connection', (socket) => {
     room.lastDiscarded = { value: cardList[0].value };
     io.to(socket.id).emit('cardDiscarded', cardList);
     room.players.forEach(p => {
-      if (p.id !== socket.id) {
-        io.to(p.id).emit('cardDiscardedByOther', {
-          from: socket.id,
-          cards: cardList
-        });
-      }
+    if (p.id !== socket.id) {
+    io.to(p.id).emit('cardDiscardedByOther', {
+      from: socket.id,
+      cards: cardList
     });
-    room.turnIndex = (room.turnIndex + 1) % room.players.length;
-    const next = getCurrentPlayer(room);
-    const nextHand = room.hands[next];
+  }
+});
+})
 
-    room.phase = 'draw';
-    room.players.forEach(p => io.to(p.id).emit('notYourTurn'));
+// Prossimo turno
+room.turnIndex = (room.turnIndex + 1) % room.players.length;
+const next = getCurrentPlayer(room);
+const nextHand = room.hands[next];
+room.phase = 'draw';
 
-    const match = nextHand.find(c => c.value === room.lastDiscarded.value);
-    if (match) {
-      room.phase = 'discard';
-      io.to(next).emit('canAutoDiscard', match);
-    } else {
-      io.to(next).emit('yourTurn');
-    }
-  });
+// Notifica turno
+room.players.forEach(p => {
+  if (p.id === next) {
+    io.to(p.id).emit('yourTurn');
+  } else {
+    const nextPlayer = room.players.find(pl => pl.id === next);
+    io.to(p.id).emit('someoneTurn', {
+      id: nextPlayer.id,
+      name: nextPlayer.name
+    });
+  }
+});
+
+const match = nextHand.find(c => c.value === room.lastDiscarded.value);
+ if (match) {
+  room.phase = 'discard';
+  io.to(next).emit('canAutoDiscard', match);
+}
+
 
   socket.on('kang', () => {
     console.log(`[SERVER] ${socket.id} ha chiamato kang`);
@@ -181,8 +193,19 @@ function startGame(code) {
   });
 
   if (!winner) {
-    io.to(getCurrentPlayer(room)).emit('yourTurn');
-  }
+    const next = getCurrentPlayer(room);
+    room.players.forEach(p => {
+      if (p.id === next) {
+        io.to(p.id).emit('yourTurn');
+      } else {
+        const nextPlayer = room.players.find(pl => pl.id === next);
+        io.to(p.id).emit('someoneTurn', {
+          id: nextPlayer.id,
+          name: nextPlayer.name
+        });
+      }
+    });
+  }  
 }
 
 function getCurrentPlayer(room) {
