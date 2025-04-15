@@ -202,17 +202,23 @@ function updateKingPile(pileId, card, count) {
 }
 
 function updateScoreTable(scores) {
-  const table = document.getElementById('scoreTable');
-  const tbody = table.querySelector('tbody');
-  tbody.innerHTML = '';
+  if (!Array.isArray(scores)) return;
 
-  scores.forEach(({ name, balance }) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${name}</td><td>${balance.toFixed(2)}€</td>`;
-    tbody.appendChild(row);
-  });
-
-  table.style.display = 'table';
+  const balanceTable = document.getElementById('balanceScoreTable');
+  if (balanceTable) {
+    const tbody = balanceTable.querySelector('tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      scores.forEach(({ name, balance }) => {
+        if (name && balance !== undefined) {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${name}</td><td>${balance.toFixed(2)}€</td>`;
+          tbody.appendChild(row);
+        }
+      });
+    }
+    balanceTable.style.display = 'table';
+  }
 }
 
 
@@ -442,29 +448,36 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores
 
   updateStatus(isMe ? `🏆 Hai vinto! ${reason}` : `💀 ${name} ${reason}`);
   document.getElementById('actions').style.display = 'none';
+  
+  // Mostra sempre il bottone per nuova mano all'host
+  const newRoundBtn = document.getElementById('newRoundBtn');
+  if (newRoundBtn) {
+    newRoundBtn.style.display = isHost ? 'inline-block' : 'none';
+  }
 
   // 🎬 Mostra overlay con combinazione speciale se presente
   const comboMatch = reason.match(/combinazione speciale: (.+)/i);
   if (comboMatch) {
     const overlay = document.getElementById('specialOverlay');
-    const comboTitle = overlay.querySelector('.combo-title');
-    const comboPlayer = overlay.querySelector('.combo-player');
+    if (overlay) {
+      const comboTitle = overlay.querySelector('.combo-title');
+      const comboPlayer = overlay.querySelector('.combo-player');
 
-    comboTitle.textContent = comboMatch[1].toUpperCase();
-    comboPlayer.textContent = `di ${name}`;
-    overlay.classList.remove('hidden');
+      if (comboTitle) comboTitle.textContent = comboMatch[1].toUpperCase();
+      if (comboPlayer) comboPlayer.textContent = `di ${name}`;
+      overlay.classList.remove('hidden');
 
-    const drumroll = new Audio('drumroll.mp3');
-    drumroll.play();
+      const drumroll = new Audio('drumroll.mp3');
+      drumroll.play();
 
-    if (isMe) {
-      const cards = document.querySelectorAll('#bottom-hand .card');
-      cards.forEach(c => c.classList.add('special-animate'));
-      setTimeout(() => cards.forEach(c => c.classList.remove('special-animate')), 4000);
+      if (isMe) {
+        const cards = document.querySelectorAll('#bottom-hand .card');
+        cards.forEach(c => c.classList.add('special-animate'));
+        setTimeout(() => cards.forEach(c => c.classList.remove('special-animate')), 4000);
+      }
+
+      setTimeout(() => overlay.classList.add('hidden'), 4000);
     }
-
-    setTimeout(() => overlay.classList.add('hidden'), 4000);
-    document.getElementById('newRoundBtn').style.display = isHost ? 'inline-block' : 'none';
   }
 
   // 💰 Overlay animazione vincita
