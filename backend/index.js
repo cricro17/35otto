@@ -250,5 +250,5 @@ function calculatePoints(hand) {
   }, 0);
 }
 
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => console.log(`🟢 Server online su porta ${PORT}`));
