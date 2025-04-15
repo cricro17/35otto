@@ -127,33 +127,6 @@ io.on('connection', (socket) => {
     }
   });
   
-
-// Prossimo turno
-room.turnIndex = (room.turnIndex + 1) % room.players.length;
-const next = getCurrentPlayer(room);
-const nextHand = room.hands[next];
-room.phase = 'draw';
-
-// Notifica turno
-room.players.forEach(p => {
-  if (p.id === next) {
-    io.to(p.id).emit('yourTurn');
-  } else {
-    const nextPlayer = room.players.find(pl => pl.id === next);
-    io.to(p.id).emit('someoneTurn', {
-      id: nextPlayer.id,
-      name: nextPlayer.name
-    });
-  }
-});
-
-const match = nextHand.find(c => c.value === room.lastDiscarded.value);
- if (match) {
-  room.phase = 'discard';
-  io.to(next).emit('canAutoDiscard', match);
-}
-
-
   socket.on('kang', () => {
     console.log(`[SERVER] ${socket.id} ha chiamato kang`);
     const roomCode = findPlayerRoom(socket.id);
