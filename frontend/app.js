@@ -84,24 +84,22 @@ function updateScoreTable(scores) {
 }
 
 function updateSummaryTable() {
-  const table = document.getElementById('summaryTable');
-  if (!table) return;
+  const tbody = document.querySelector('#summaryTable tbody');
+  if (!tbody) return;
 
-  const tbody = table.querySelector('tbody');
   tbody.innerHTML = '';
 
   Object.entries(playerStats).forEach(([name, { total, hands }]) => {
     const row = document.createElement('tr');
-    const balanceClass = total >= 0 ? 'balance-positive' : 'balance-negative';
-  
     row.innerHTML = `
       <td>${name}</td>
-      <td class="${balanceClass}">${total.toFixed(2)}€</td>
+      <td class="${total >= 0 ? 'balance-positive' : 'balance-negative'}">${total.toFixed(2)}€</td>
       <td>${hands}</td>
     `;
     tbody.appendChild(row);
-  });  
+  });
 }
+
 
 
 // ⚠️ FIX ANIMATION BUG
