@@ -390,12 +390,40 @@ socket.on('notYourTurn', () => {
 
 socket.on('gameEnded', ({ winner, reason }) => {
   const name = playerNames[winner] || 'Qualcuno';
-  const msg = winner === socket.id
+  const isMe = winner === socket.id;
+  const msg = isMe
     ? `🏆 Hai vinto! ${reason}`
     : `💀 ${name} ${reason}`;
   updateStatus(msg);
   document.getElementById('actions').style.display = 'none';
+
+  // 🎬 Overlay con combo speciale
+  const overlay = document.getElementById('specialOverlay');
+  const comboTitle = overlay.querySelector('.combo-title');
+  const comboPlayer = overlay.querySelector('.combo-player');
+  const match = reason.match(/combinazione speciale: (.+)/i);
+
+  if (match) {
+    const combo = match[1].toUpperCase();
+    comboTitle.textContent = combo;
+    comboPlayer.textContent = `di ${name}`;
+    overlay.classList.remove('hidden');
+
+    const drumroll = new Audio('drumroll.mp3'); // caricalo in /frontend
+    drumroll.play();
+
+    if (isMe) {
+      const cards = document.querySelectorAll('#bottom-hand .card');
+      cards.forEach(c => c.classList.add('special-animate'));
+      setTimeout(() => cards.forEach(c => c.classList.remove('special-animate')), 4000);
+    }
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+    }, 4000);
+  }
 });
+
 
 socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {
   const allPositions = ['bottom', 'right', 'top', 'left'];

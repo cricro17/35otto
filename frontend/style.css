@@ -546,3 +546,54 @@ button:hover {
     transform-origin: center;
   }
 }
+
+#specialOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+#specialOverlay.hidden {
+  display: none;
+}
+
+.combo-content {
+  text-align: center;
+  color: gold;
+  font-family: 'Arial Black', sans-serif;
+  animation: popScale 0.6s ease-out forwards;
+}
+
+.combo-title {
+  font-size: 4rem;
+  text-shadow: 0 0 15px gold;
+  margin-bottom: 10px;
+  animation: glow 1.4s infinite ease-in-out;
+}
+
+.combo-player {
+  font-size: 2rem;
+  color: #fff;
+}
+
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 15px gold; }
+  50% { text-shadow: 0 0 35px gold; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popScale {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
