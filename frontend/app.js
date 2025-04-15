@@ -422,25 +422,21 @@ socket.on('notYourTurn', () => {
   updateButtons();
 });
 
-socket.on('gameEnded', ({ winner, winnerName, reason, totalWinnings }) => {
-  const name = playerNames[winner] || winnerName || 'Qualcuno';
+socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason }) => {
+  const name = winnerName || playerNames[winner] || 'Qualcuno';
   const isMe = winner === socket.id;
 
-  const msg = isMe
-    ? `🏆 Hai vinto! ${reason}`
-    : `💀 ${name} ${reason}`;
-
-  updateStatus(msg);
+  updateStatus(isMe ? `🏆 Hai vinto! ${reason}` : `💀 ${name} ${reason}`);
   document.getElementById('actions').style.display = 'none';
 
-  const overlay = document.getElementById('specialOverlay');
-  const comboTitle = overlay.querySelector('.combo-title');
-  const comboPlayer = overlay.querySelector('.combo-player');
-  const match = reason.match(/combinazione speciale: (.+)/i);
+  // 🎬 Mostra overlay con combinazione speciale se presente
+  const comboMatch = reason.match(/combinazione speciale: (.+)/i);
+  if (comboMatch) {
+    const overlay = document.getElementById('specialOverlay');
+    const comboTitle = overlay.querySelector('.combo-title');
+    const comboPlayer = overlay.querySelector('.combo-player');
 
-  if (match) {
-    const combo = match[1].toUpperCase();
-    comboTitle.textContent = combo;
+    comboTitle.textContent = comboMatch[1].toUpperCase();
     comboPlayer.textContent = `di ${name}`;
     overlay.classList.remove('hidden');
 
@@ -456,26 +452,46 @@ socket.on('gameEnded', ({ winner, winnerName, reason, totalWinnings }) => {
     setTimeout(() => overlay.classList.add('hidden'), 4000);
   }
 
-  // Animazione vincita con monete
+  // 💰 Overlay animazione vincita
   const winOverlay = document.createElement('div');
   winOverlay.id = 'winnerOverlay';
   winOverlay.innerHTML = `
-    <div class="winner-message">🎉 ${name} ha vinto ${totalWinnings}€</div>
+    <div class="winner-message pulse">
+      🎉 ${name} ha vinto <span id="countUp">0</span>€
+    </div>
   `;
   document.body.appendChild(winOverlay);
 
-  for (let i = 0; i < 30; i++) {
+  // Coin animation
+  for (let i = 0; i < 40; i++) {
     const coin = document.createElement('div');
     coin.className = 'coin';
-    coin.style.left = Math.random() * 100 + 'vw';
-    coin.style.animationDuration = (Math.random() * 1 + 1.5) + 's';
     coin.innerText = '💰';
+    coin.style.left = Math.random() * 100 + 'vw';
+    coin.style.animationDuration = (1 + Math.random() * 1.5) + 's';
+    coin.style.fontSize = Math.random() * 1 + 1.4 + 'rem';
+    coin.style.opacity = Math.random();
+    coin.style.transform = `rotate(${Math.random() * 360}deg)`;
     winOverlay.appendChild(coin);
   }
 
+  // Contatore dinamico
+  const counter = winOverlay.querySelector('#countUp');
+  let current = 0;
+  const duration = 2000;
+  const increment = Math.ceil(totalWinnings / (duration / 50));
+
+  const interval = setInterval(() => {
+    current += increment;
+    if (current >= totalWinnings) {
+      current = totalWinnings;
+      clearInterval(interval);
+    }
+    counter.textContent = current;
+  }, 50);
+
   setTimeout(() => winOverlay.remove(), 4000);
 });
-
 
 
 socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {
