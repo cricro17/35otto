@@ -1,5 +1,9 @@
 // ✅ app.js completo e fixato
-const socket = io("http://localhost:3002");
+const socket = io(window.location.hostname.includes("localhost")
+  ? "http://localhost:3002"
+  : "https://https://three5otto.onrender.com"
+);
+
 
 let playerHand = [];
 let selectedIndexes = [];

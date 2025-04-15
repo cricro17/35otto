@@ -9,7 +9,9 @@ const { createDeck, dealHands, evaluateHand } = require('./game');
 const app = express();
 const path = require('path');
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
-app.use(cors());
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
