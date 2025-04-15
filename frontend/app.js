@@ -89,12 +89,12 @@ function updateSummaryTable() {
   if (!tbody) return;
 
   tbody.innerHTML = '';
-
   Object.entries(playerStats).forEach(([name, { total, hands }]) => {
     const row = document.createElement('tr');
+    const cls = total >= 0 ? 'balance-positive' : 'balance-negative';
     row.innerHTML = `
       <td>${name}</td>
-      <td class="${total >= 0 ? 'balance-positive' : 'balance-negative'}">${total.toFixed(2)}€</td>
+      <td class="${cls}">${total.toFixed(2)}€</td>
       <td>${hands}</td>
     `;
     tbody.appendChild(row);
@@ -656,7 +656,6 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores
 
   if (Array.isArray(finalScores)) {
     updateScoreTable(finalScores);
-  
     finalScores.forEach(({ name, balance }) => {
       if (!playerStats[name]) {
         playerStats[name] = { total: 0, hands: 0 };
