@@ -2,98 +2,97 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>35otto - Gioco di Carte</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    html, body {
-      max-width: 100vw;
-      max-height: 100svh;
-      overflow: hidden;
-      touch-action: manipulation;
-      -webkit-overflow-scrolling: touch;
-    }
-    .table {
-      transform: scale(0.95);
-      transform-origin: center;
-    }
-    @media (max-width: 600px) {
-      .table {
-        transform: scale(0.85);
-      }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>358 Online</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols&display=swap">
 </head>
 <body>
-  <main class="game-container">
+  <div class="game-container">
     <header>
-      <h1>35otto</h1>
-      <p>Gioco di carte multiplayer online</p>
+      <h1>358 Online <span class="emoji">🂴</span></h1>
+      <div class="lobby-controls">
+        <input type="text" id="playerName" placeholder="Il tuo nome"/>
+        <button id="create">Crea partita</button>
+        <select id="maxPlayers">
+          <option value="3">3 giocatori</option>
+          <option value="4">4 giocatori</option>
+        </select>
+        <input type="text" id="roomCode" placeholder="Codice stanza"/>
+        <button id="join">Entra nella partita</button>
+        <button id="startGame" style="display:none;">Avvia Partita</button>
+      </div>
+      <p id="status" tabindex="0">In attesa dei giocatori...</p>
     </header>
 
-    <section class="lobby-controls">
-      <input type="text" id="playerName" placeholder="Il tuo nome" />
-      <input type="text" id="roomCode" placeholder="Codice stanza" />
-      <select id="maxPlayers">
-        <option value="3">3 giocatori</option>
-        <option value="4">4 giocatori</option>
-      </select>
-      <button id="create">Crea stanza</button>
-      <button id="join">Entra</button>
-      <button id="startGame" style="display: none">Inizia</button>
-    </section>
-
-    <div id="status"></div>
-    <ul id="playersList"></ul>
-
-    <div class="table">
-      <div class="player top hidden">
-        <div class="name"></div>
-        <div class="discards">
-          <div id="top-pile" class="pile-normal"></div>
-          <div id="top-pile-k" class="pile-k" data-count="0"></div>
+    <main>
+      <div class="table">
+        <div class="player top">
+          <div class="name">pollo</div>
+          <div class="hand other-hand" id="top-hand"></div>
+          <div class="discards">
+            <div class="pile pile-k" id="top-pile-k"></div>
+            <div class="pile pile-normal" id="top-pile"></div>
+          </div>
         </div>
-        <div id="top-hand" class="hand"></div>
-      </div>
-
-      <div class="player left">
-        <div class="name"></div>
-        <div class="discards">
-          <div id="left-pile" class="pile-normal"></div>
-          <div id="left-pile-k" class="pile-k" data-count="0"></div>
+    
+        <div class="player right">
+          <div class="name">Giocatore 2</div>
+          <div class="discards">
+            <div class="pile pile-k" id="right-pile-k"></div>
+            <div class="pile pile-normal" id="right-pile"></div>
+          </div>
+          <div class="hand other-hand" id="right-hand"></div>
         </div>
-        <div id="left-hand" class="hand"></div>
-      </div>
-
-      <div class="player right">
-        <div class="name"></div>
-        <div class="discards">
-          <div id="right-pile" class="pile-normal"></div>
-          <div id="right-pile-k" class="pile-k" data-count="0"></div>
+    
+        <div class="player bottom">
+          <div class="name">Tu</div>
+          <div class="discards">
+            <div class="pile pile-k" id="bottom-pile-k"></div>
+            <div class="pile pile-normal" id="bottom-pile"></div>
+          </div>
+          <div class="hand" id="bottom-hand"></div>
         </div>
-        <div id="right-hand" class="hand"></div>
-      </div>
-
-      <div class="player bottom">
-        <div class="name">Tu</div>
-        <div class="discards">
-          <div id="bottom-pile" class="pile-normal"></div>
-          <div id="bottom-pile-k" class="pile-k" data-count="0"></div>
+    
+        <div class="player left">
+          <div class="name">Giocatore 3</div>
+          <div class="discards">
+            <div class="pile pile-k" id="left-pile-k"></div>
+            <div class="pile pile-normal" id="left-pile"></div>
+          </div>
+          <div class="hand other-hand" id="left-hand"></div>
         </div>
-        <div id="bottom-hand" class="hand"></div>
       </div>
-    </div>
+  
+      <section id="actions" style="display: none;">
+        <div class="hand" id="hand"></div>
+        <div class="action-buttons">
+          <button id="drawBtn">Pesca</button>
+          <button id="discardBtn">Scarta</button>
+          <button id="kangBtn">Kang</button>
+          <button id="autoDiscardBtn" style="display: none;">Scarta automaticamente</button>
+        </div>
+      </section>
 
-    <div id="actions" class="action-buttons" style="display: none">
-      <button id="drawBtn">Pesca</button>
-      <button id="discardBtn">Scarta</button>
-      <button id="kangBtn">Kang!</button>
-    </div>
+      <aside class="scoreboard">
+        <h2>Punteggi</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Vittorie</th>
+            </tr>
+          </thead>
+          <tbody id="scoreTable"></tbody>
+        </table>
+      </aside>
 
-    <button id="autoDiscardBtn" style="display: none">Scarta automaticamente</button>
-  </main>
+      <h2>Giocatori nella stanza</h2>
+      <ul id="playersList"></ul>
+    </main>
+  </div>
 
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" integrity="sha384-4zGkVxWkZz2nM6Ud9l8SlcijgAf9IrYdfp5POosQ2vRyqz4c6+ZKAz9xZV+dZ0Tm" crossorigin="anonymous"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
