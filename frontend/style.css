@@ -452,19 +452,22 @@ button:hover {
 
 /* ✅ Responsive ottimizzato per mobile e desktop */
 @media (max-width: 600px) {
-  .card, .card-back {
-    width: 32px;
-    height: 48px;
+  .card {
     font-size: 1.1rem;
     line-height: 1;
-    letter-spacing: -0.5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    letter-spacing: normal;
   }
-
+  
   .card::after {
-    font-size: 1.4rem;
-    margin-left: 2px;
+    display: block;
+    font-size: 1.3rem;
+    margin-top: 2px;
   }
-
+  
   .pile-normal, .pile-k {
     width: 36px;
     height: 54px;
