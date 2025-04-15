@@ -1,5 +1,5 @@
 // ✅ app.js completo e fixato
-const socket = io("https://https://three5otto.onrender.com"
+const socket = io("https://three5otto.onrender.com"
 );
 let playerHand = [];
 let selectedIndexes = [];
