@@ -2,9 +2,27 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>35otto - Gioco di Carte</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    html, body {
+      max-width: 100vw;
+      max-height: 100svh;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table {
+      transform: scale(0.95);
+      transform-origin: center;
+    }
+    @media (max-width: 600px) {
+      .table {
+        transform: scale(0.85);
+      }
+    }
+  </style>
 </head>
 <body>
   <main class="game-container">
