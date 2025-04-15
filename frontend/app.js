@@ -177,9 +177,9 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
   : ["bottom", "right", "top", "left"];
 
   const topEl = document.querySelector('.player.top');
-if (topEl) {
+   if (topEl) {
   topEl.classList.toggle('hidden', totalPlayers === 3);
-}
+  }
 
   playerHand = hand;
   localPlayerIndex = playerIndex;
@@ -193,12 +193,19 @@ if (topEl) {
   }
 
   allPlayers.forEach((pid, i) => {
+    const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
+    const position = discardMap[relIndex];
+  
     if (pid !== socket.id) {
-      const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
-      const position = discardMap[relIndex];
       renderBacksAnimated(`${position}-hand`, hand.length, pid);
     }
+  
+    // ✅ Mostra il nome corretto del giocatore
+    const name = playerNames[pid] || `Giocatore ${i + 1}`;
+    const el = document.querySelector(`.player.${position} .name`);
+    if (el) el.textContent = pid === socket.id ? 'Tu' : name;
   });
+  
 
   if (special) {
     updateStatus(`✨ Hai una combinazione speciale: ${special.combination} (x${special.multiplier})`);
