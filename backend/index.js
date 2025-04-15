@@ -167,7 +167,7 @@ io.on('connection', (socket) => {
         totalWinnings: isWinner ? totalWinnings : -gainPerOpponent,
         aces: acesInHand,
         kings: discardedKings,
-        finalScores
+        finalscores
       });
     });
     

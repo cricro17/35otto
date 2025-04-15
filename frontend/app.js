@@ -436,7 +436,7 @@ socket.on('notYourTurn', () => {
   updateButtons();
 });
 
-socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason }) => {
+socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores }) => {
   const name = winnerName || playerNames[winner] || 'Qualcuno';
   const isMe = winner === socket.id;
 
