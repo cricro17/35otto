@@ -455,6 +455,19 @@ button:hover {
   .card, .card-back {
     width: 32px;
     height: 48px;
+    font-size: 1.1rem;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+
+  .card::after {
+    font-size: 1.4rem;
+    margin-left: 2px;
+  }
+
+  .pile-normal, .pile-k {
+    width: 36px;
+    height: 54px;
     font-size: 0.9rem;
   }
 
@@ -491,20 +504,42 @@ button:hover {
     background: #222;
   }
 
+  .player.left .hand,
+  .player.right .hand {
+    transform: none;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .player.left,
+  .player.right {
+    transform: none;
+    margin: 0 auto;
+  }
+
+  .player.left .discards,
+  .player.right .discards {
+    transform: none;
+    top: auto;
+    margin: 6px auto;
+    position: relative;
+  }
+
+  .player.left .name,
+  .player.right .name {
+    writing-mode: horizontal-tb;
+    transform: none;
+    top: auto;
+    font-size: 0.75rem;
+  }
+
   .table {
     width: 100vw;
-    height: 88vh;
+    height: 78vh;
     padding: 4px;
-    grid-template-rows: 1fr auto 1fr;
+    grid-template-rows: auto auto auto;
     transform: scale(0.95);
     transform-origin: center;
-  }
-}
-
-@media (min-width: 601px) {
-  .bottom-hand {
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow: visible;
   }
 }
