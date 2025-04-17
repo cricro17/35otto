@@ -9,9 +9,10 @@ let localPlayerIndex = null;
 let isHost = false;
 let playerName = '';
 let firstDeal = true;
+let roundNumber = 1;
 const playerNames = {};
 let discardMap = [];
-let roundNUmber = 1;
+
 
 const statusEl = document.getElementById('status');
 const createBtn = document.getElementById('create');
@@ -84,7 +85,7 @@ function updateScoreTable(scores) {
   }
 }
 
-function updateSummaryTable() {
+function updateSummaryTable(playerStats) {
   const tbody = document.querySelector('#summaryTable tbody');
   if (!tbody) return;
 
@@ -296,18 +297,21 @@ function updateScoreTable(scores) {
 // Socket Events
 socket.on('playerListUpdate', renderPlayersList);
 
+// ✅ Fix distribuzione carte iniziali nella prima mano
 socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers }) => {
   discardMap = totalPlayers === 3
-  ? ["bottom", "right", "left"] // mostra due avversari a dx e sx
-  : ["bottom", "right", "top", "left"];
+    ? ['bottom', 'right', 'left']
+    : ['bottom', 'right', 'top', 'left'];
 
   const topEl = document.querySelector('.player.top');
-   if (topEl) {
-  topEl.classList.toggle('hidden', totalPlayers === 3);
+  if (topEl) {
+    topEl.classList.toggle('hidden', totalPlayers === 3);
   }
 
-  playerHand = hand;
+  playerHand = sortHandByValueDesc(hand);
+  localPlayerIndex = playerIndex;
 
+  // Reset pile scarti
   ['bottom', 'top', 'left', 'right'].forEach(pos => {
     const pile = document.getElementById(`${pos}-pile`);
     const pileK = document.getElementById(`${pos}-pile-k`);
@@ -321,59 +325,38 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
     }
   });
 
-  localPlayerIndex = playerIndex;
-
-  if (firstDeal) {
-    playerHand = sortHandByValueDesc(hand);
-    const roundLabel = document.getElementById('roundCounter');
-if (roundLabel) {
-  roundLabel.textContent = `Mano n°${roundNumber}`;
-  roundNumber++;
-  roundLabel.classList.remove('hidden');
-  roundLabel.style.animation = 'none';
-  void roundLabel.offsetHeight; // forza reflow per riattivare animazione
-  roundLabel.style.animation = 'fadeOut 3s ease forwards';
-  setTimeout(() => roundLabel.classList.add('hidden'), 3000);
-}
-
-
-    renderHandAnimated(playerHand, 'bottom-hand', true);
-    firstDeal = false;
-  } else {
-    renderHand();
+  // Mostra etichetta "Mano n°X"
+  const roundLabel = document.getElementById('roundCounter');
+  if (roundLabel) {
+    roundLabel.textContent = `Mano n°${roundNumber}`;
+    roundNumber++;
+    roundLabel.classList.remove('hidden');
+    roundLabel.style.animation = 'none';
+    void roundLabel.offsetHeight;
+    roundLabel.style.animation = 'fadeOut 3s ease forwards';
+    setTimeout(() => roundLabel.classList.add('hidden'), 3000);
   }
 
+  // Mostra mano animata
+  renderHandAnimated(playerHand, 'bottom-hand', true);
+
+  // Mostra carte dietro agli avversari e aggiorna nomi
   allPlayers.forEach((pid, i) => {
     const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
     const position = discardMap[relIndex];
-  
+
     if (pid !== socket.id) {
       renderBacksAnimated(`${position}-hand`, hand.length, pid);
     }
-  
-    // ✅ Mostra il nome corretto del giocatore
+
     const name = playerNames[pid] || `Giocatore ${i + 1}`;
     const el = document.querySelector(`.player.${position} .name`);
     if (el) el.textContent = pid === socket.id ? 'Tu' : name;
   });
-  
 
   if (special) {
     updateStatus(`✨ Hai una combinazione speciale: ${special.combination} (x${special.multiplier})`);
   }
-
-  ['bottom', 'top', 'left', 'right'].forEach(pos => {
-    const normalPile = document.getElementById(`${pos}-pile`);
-    const kingPile = document.getElementById(`${pos}-pile-k`);
-    if (normalPile) {
-      normalPile.innerHTML = '';
-      normalPile.dataset.fullstack = '';
-    }
-    if (kingPile) {
-      kingPile.innerHTML = '';
-      kingPile.dataset.count = '0';
-    }
-  });
 });
 
 socket.on('yourTurn', () => {
@@ -415,67 +398,108 @@ socket.on('cardDrawn', (card) => {
 });
 
 
+// ✅ FIX LOGICA SCARTO (app.js): sistemiamo logica K e carte normali
+// ✅ Fix completo per gestione pile scarti con Re persistenti e normali visibili
+// ✅ Fix definitivo: mantieni le pile indipendenti, non azzerare i Re se non necessari
 socket.on('cardDiscarded', (cards) => {
-  // Rimuove le carte dalla mano del giocatore
   cards.forEach(card => {
-    const index = playerHand.findIndex(c =>
-      c.value === card.value && c.suit === card.suit
-    );
+    const index = playerHand.findIndex(c => c.value === card.value && c.suit === card.suit);
     if (index !== -1) playerHand.splice(index, 1);
   });
 
-  // Gestione pile scarti
   const pile = document.getElementById('bottom-pile');
-  if (!pile) return;
-  pile.innerHTML = ''; // ✅ Reset UNA volta sola
+  const pileK = document.getElementById('bottom-pile-k');
+  if (!pile || !pileK) return;
 
-  cards.forEach((card, i) => {
+  // Re: calcolo e visualizzazione
+  let kingCount = parseInt(pileK.dataset.count || '0');
+  const kingCards = [];
+  const normalCards = [];
+  cards.forEach(card => {
+    const text = `${card.value}${card.suit}`;
     if (card.value === 'K') {
-      const pileK = document.getElementById('bottom-pile-k');
-      const current = parseInt(pileK.dataset.count || '0');
-      const newCount = current + 1;
-      pileK.dataset.count = newCount;
-
-      pileK.innerHTML = '';
-      const span = document.createElement('span');
-      span.className = `card ${getSuitName(card.suit)} king-animate`;
-      span.innerText = `${card.value}${card.suit}`;
-      pileK.appendChild(span);
-
-      span.addEventListener('animationend', () => {
-        span.classList.remove('king-animate');
-      });
-
-      if (newCount > 1) {
-        const badge = document.createElement('div');
-        badge.className = 'king-counter';
-        badge.innerText = `+${newCount}`;
-        pileK.appendChild(badge);
-      }
-
+      kingCount++;
+      kingCards.push(card);
     } else {
-      const span = document.createElement('span');
-      span.className = 'card';
-      span.innerText = `${card.value}${card.suit}`;
-      span.classList.add('discard-animate');
-
-      span.style.zIndex = i;
-      span.style.position = 'absolute';
-      span.style.top = `${i * 16}px`;
-      span.style.left = '0';
-      span.style.transform = 'scale(0.9)';
-      span.style.opacity = 0.95;
-      span.style.filter = 'grayscale(40%)';
-      span.style.boxShadow = '0 0 4px rgba(0,0,0,0.6)';
-      span.style.borderRadius = '6px';
-
-      span.addEventListener('animationend', () => {
-        span.classList.remove('discard-animate');
-      });
-
-      pile.appendChild(span);
+      normalCards.push(text);
     }
   });
+
+  // ✅ Mostra solo ultimo Re, badge se > 1
+  if (kingCards.length > 0) {
+    const lastK = kingCards[kingCards.length - 1];
+    pileK.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = `card ${getSuitName(lastK.suit)} king-animate`;
+    span.innerText = `${lastK.value}${lastK.suit}`;
+    pileK.appendChild(span);
+    span.addEventListener('animationend', () => {
+      span.classList.remove('king-animate');
+    });
+    if (kingCount > 1) {
+      const badge = document.createElement('div');
+      badge.className = 'king-counter';
+      badge.innerText = `+${kingCount}`;
+      pileK.appendChild(badge);
+    }
+    pileK.dataset.count = kingCount;
+  }
+
+  // ✅ Stack persistente per normali
+  if (normalCards.length > 0) {
+    let fullStack = pile.dataset.fullstack ? pile.dataset.fullstack.split(',') : [];
+    fullStack = [...fullStack, ...normalCards];
+    pile.dataset.fullstack = fullStack.join(',');
+
+    pile.innerHTML = '';
+    const last = fullStack[fullStack.length - 1];
+
+    const span = document.createElement('span');
+    span.className = 'card top-card discard-animate';
+    span.innerText = last;
+    pile.appendChild(span);
+    
+
+    span.addEventListener('animationend', () => {
+      span.classList.remove('discard-animate');
+    });
+
+    const stack = document.createElement('div');
+    stack.className = 'discard-stack';
+    stack.tabIndex = -1; // ✅ abilita scroll su focus (click)
+    stack.addEventListener('click', () => {
+      stack.focus(); // attiva scroll
+    });
+
+    fullStack.forEach(text => {
+      const c = document.createElement('span');
+      c.className = 'card mini';
+      c.innerText = text;
+      stack.appendChild(c);
+    });
+
+    pile.appendChild(stack);
+
+    // 🖱️ Abilita scroll solo dopo click su ultima carta
+    span.addEventListener('click', () => {
+      stack.classList.toggle('show');
+      if (stack.classList.contains('show')) {
+        stack.scrollTop = stack.scrollHeight;
+        stack.focus();
+      }
+    });
+    
+    stack.tabIndex = -1;
+    
+    stack.addEventListener('wheel', (e) => {
+      if (stack.classList.contains('show')) {
+        e.preventDefault();
+        e.stopPropagation();
+        stack.scrollTop += e.deltaY;
+      }
+    }, { passive: false });
+    
+  }
 
   selectedIndexes = [];
   playerHand = sortHandByValueDesc(playerHand);
@@ -484,6 +508,12 @@ socket.on('cardDiscarded', (cards) => {
 });
 
 
+
+
+// 🔁 VERSIONE AGGIORNATA per gli scarti altrui
+// 🔁 Ventaglio reale per le pile degli avversari (senza tooltip)
+// 🔁 VERSIONE AGGIORNATA per gli scarti altrui
+// 🔁 Stack verticale visibile su click con scroll
 socket.on('cardDiscardedByOther', ({ from, cards }) => {
   const allIds = Object.keys(playerNames);
   const total = allIds.length;
@@ -495,62 +525,106 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
   const pile = document.getElementById(`${pos}-pile`);
   if (!pile || !pileK) return;
 
-  pileK.innerHTML = '';
-  pile.innerHTML = '';
-  pile.dataset.fullstack = '';
-  let kingCount = 0;
-
-  cards.forEach((card, i) => {
+  let updatedKingCount = parseInt(pileK.dataset.count || '0');
+  const kingCards = [];
+  const normalCards = [];
+  cards.forEach(card => {
     const text = `${card.value}${card.suit}`;
-
     if (card.value === 'K') {
-      kingCount++;
-      const span = document.createElement('span');
-      span.className = `card ${getSuitName(card.suit)} king-animate`;
-      span.innerText = text;
-      pileK.appendChild(span);
-
-      span.addEventListener('animationend', () => {
-        span.classList.remove('king-animate');
-      });
-
+      updatedKingCount++;
+      kingCards.push(card);
     } else {
-      const span = document.createElement('span');
-      span.className = 'card discard-animate';
-      span.innerText = text;
-
-      span.style.zIndex = i;
-      span.style.position = 'absolute';
-      span.style.top = `${i * 16}px`;
-      span.style.left = '0';
-      span.style.transform = 'scale(0.9)';
-      span.style.opacity = 0.95;
-      span.style.filter = 'grayscale(40%)';
-      span.style.boxShadow = '0 0 4px rgba(0,0,0,0.6)';
-      span.style.borderRadius = '6px';
-
-      span.addEventListener('animationend', () => {
-        span.classList.remove('discard-animate');
-      });
-
-      pile.appendChild(span);
-
-      // Aggiorna tooltip pile-normal
-      pile.dataset.fullstack = (pile.dataset.fullstack ? pile.dataset.fullstack + '\n' : '') + text;
-      span.setAttribute('data-fullstack', pile.dataset.fullstack);
+      normalCards.push(text);
     }
   });
 
-  if (kingCount > 0) {
-    pileK.dataset.count = kingCount;
-    if (kingCount > 1) {
+  if (kingCards.length > 0) {
+    pileK.innerHTML = '';
+    const lastK = kingCards[kingCards.length - 1];
+    const span = document.createElement('span');
+    span.className = `card ${getSuitName(lastK.suit)} king-animate`;
+    span.innerText = `${lastK.value}${lastK.suit}`;
+    pileK.appendChild(span);
+    span.addEventListener('animationend', () => {
+      span.classList.remove('king-animate');
+    });
+    if (updatedKingCount > 1) {
       const badge = document.createElement('div');
       badge.className = 'king-counter';
-      badge.innerText = `+${kingCount}`;
+      badge.innerText = `+${updatedKingCount}`;
       pileK.appendChild(badge);
     }
+    pileK.dataset.count = updatedKingCount;
+  }
+
+  if (normalCards.length > 0) {
+    let fullStack = pile.dataset.fullstack ? pile.dataset.fullstack.split(',') : [];
+    fullStack = [...fullStack, ...normalCards];
+    pile.dataset.fullstack = fullStack.join(',');
+  
+    pile.innerHTML = '';
+    const last = fullStack[fullStack.length - 1];
+  
+    const span = document.createElement('span');
+    span.className = 'card top-card discard-animate';
+    span.innerText = last;
+    pile.appendChild(span);
+  
+    const stack = document.createElement('div');
+    stack.className = 'discard-stack';
+    stack.tabIndex = -1;
+  
+    // ✅ POSIZIONE E ROTAZIONE
+    if (pos === 'left') {
+      stack.style.position = 'absolute';
+      stack.style.top = '0';
+      stack.style.left = 'calc(100% + 12px)';
+      stack.style.transform = 'rotate(90deg)';
+      stack.style.transformOrigin = 'top left';
+    } else if (pos === 'right') {
+      stack.style.position = 'absolute';
+      stack.style.top = '0';
+      stack.style.right = 'calc(100% + 12px)';
+      stack.style.transform = 'rotate(-90deg)';
+      stack.style.transformOrigin = 'top right';
+      stack.style.zIndex = '1000'; // Assicura che lo stack sia sopra altri elementi
+      // Aggiunge spazio extra per evitare il taglio
+      pile.style.position = 'relative';
+      pile.style.paddingLeft = '150px'; // Spazio extra a sinistra per lo stack
+    }
+  
+    span.addEventListener('click', () => {
+      stack.classList.toggle('show');
+      if (stack.classList.contains('show')) {
+        stack.scrollTop = stack.scrollHeight;
+        stack.focus();
+      }
+    });
+  
+    stack.addEventListener('mouseleave', () => {
+      stack.classList.remove('show');
+    });
+  
+    stack.addEventListener('wheel', (e) => {
+      if (stack.classList.contains('show')) {
+        e.preventDefault();
+        e.stopPropagation();
+        stack.scrollTop += e.deltaY;
+      }
+    }, { passive: false });
+  
+    fullStack.forEach(text => {
+      const c = document.createElement('span');
+      c.className = 'card mini';
+      c.innerText = text;
+      stack.appendChild(c);
+    });
+  
+    pile.appendChild(stack);
   }
 });
+
+
 
 socket.on('canAutoDiscard', (card) => {
   isMyTurn = true;
@@ -721,12 +795,21 @@ document.getElementById('discardBtn').onclick = () => {
     alert('Puoi scartare da 1 a 4 carte dello stesso valore.');
     return;
   }
+
   const selectedCards = selectedIndexes.map(i => playerHand[i]);
   const allSameValue = selectedCards.every(c => c.value === selectedCards[0].value);
   if (!allSameValue) return alert('Le carte devono essere tutte uguali!');
+
+  // Invia allo server
   socket.emit('discardCard', selectedCards);
+
+  // Rimuovi esattamente dalle posizioni originali
+  selectedIndexes.sort((a, b) => b - a).forEach(i => playerHand.splice(i, 1));
+
   selectedIndexes = [];
   document.getElementById('actions').style.display = 'none';
+  renderHand();
+  updateButtons();
 };
 
 autoBtn.onclick = () => {
