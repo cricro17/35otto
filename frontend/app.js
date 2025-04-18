@@ -12,6 +12,8 @@ let firstDeal = true;
 let roundNumber = 1;
 const playerNames = {};
 let discardMap = [];
+let pendingTrisValue = null;
+let pendingTrisChecked = false;
 
 
 const statusEl = document.getElementById('status');
@@ -85,54 +87,66 @@ function updateScoreTable(scores) {
   }
 }
 
-function updateSummaryTable(playerStats) {
-  const tbody = document.querySelector('#summaryTable tbody');
-  if (!tbody) return;
-
-  tbody.innerHTML = '';
-  Object.entries(playerStats).forEach(([name, { total, hands }]) => {
-    const row = document.createElement('tr');
-    const cls = total >= 0 ? 'balance-positive' : 'balance-negative';
-    row.innerHTML = `
-      <td>${name}</td>
-      <td class="${cls}">${total.toFixed(2)}€</td>
-      <td>${hands}</td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
 
 
 // ⚠️ FIX ANIMATION BUG
 function renderHandAnimated(cards, containerId, withSound = false) {
   const container = document.getElementById(containerId);
   const center = document.querySelector('.table').getBoundingClientRect();
-  container.innerHTML = '';
+
+  const cardText = (card) => `${card.value}${card.suit}`;
+  const currentButtons = Array.from(container.querySelectorAll('.card'));
+
+  const cardMap = new Map();
+  currentButtons.forEach(btn => {
+    cardMap.set(btn.innerText, btn);
+  });
+
+  const alreadyInDom = new Set();
 
   cards.forEach((card, i) => {
-    const btn = document.createElement('button');
-    btn.className = `card ${getSuitName(card.suit)}`;
-    btn.innerText = `${card.value}${card.suit}`;
-    btn.onclick = () => toggleCardSelection(i, btn);
+    const text = cardText(card);
+    let btn = cardMap.get(text);
 
-    btn.style.opacity = '0';
-    btn.style.position = 'absolute';
-    btn.style.left = `${center.width / 2}px`;
-    btn.style.top = `${center.height / 2}px`;
-    btn.style.transition = 'all 0.4s ease';
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = `card ${getSuitName(card.suit)}`;
+      btn.innerText = text;
+      btn.onclick = () => toggleCardSelection(i, btn);
 
-    setTimeout(() => {
-      btn.style.opacity = '1';
-      btn.style.position = 'relative';
-      btn.style.left = '0';
-      btn.style.top = '0';
-      if (withSound) dealSound.cloneNode(true).play();
-    }, i * 250);
+      btn.style.opacity = '0';
+      btn.style.position = 'absolute';
+      btn.style.left = `${center.width / 2}px`;
+      btn.style.top = `${center.height / 2}px`;
+      btn.style.transition = 'all 0.4s ease';
 
-    container.appendChild(btn); // 🛠️ FIXED: was 'container.Child(btn);'
+      setTimeout(() => {
+        btn.style.opacity = '1';
+        btn.style.position = 'relative';
+        btn.style.left = '0';
+        btn.style.top = '0';
+        btn.classList.add('draw-animate');
+        if (withSound) dealSound.cloneNode(true).play();
+      }, 50);
+    }
+
+    if (!alreadyInDom.has(text)) {
+      container.insertBefore(btn, container.children[i] || null);
+      alreadyInDom.add(text);
+    }
+  });
+
+  // Rimuovi eventuali carte in eccesso non più nella mano
+  Array.from(container.children).forEach(btn => {
+    if (!cards.some(c => cardText(c) === btn.innerText)) {
+      container.removeChild(btn);
+    }
   });
 }
+
+
+
+  
 
 function renderPlayersList(players) {
   playersList.innerHTML = '';
@@ -203,35 +217,109 @@ function toggleCardSelection(index, button) {
   renderHand(); // re-render to update visual
 }
 
-function renderHandAnimated(cards, containerId, withSound = false) {
-  const container = document.getElementById(containerId);
-  const center = document.querySelector('.table').getBoundingClientRect();
-  container.innerHTML = '';
+function dealCardsToPlayers(players, cardsByPlayer, withSound = true) {
+  const table = document.querySelector('.table');
+  const center = table.getBoundingClientRect();
 
-  cards.forEach((card, i) => {
-    const btn = document.createElement('button');
-    btn.className = `card ${getSuitName(card.suit)}`;
-    btn.innerText = `${card.value}${card.suit}`;
+  let delay = 0;
 
-    btn.onclick = () => toggleCardSelection(i, btn);
+  // Calcola massimo numero di carte da dare
+  const maxCards = Math.max(...players.map(p => cardsByPlayer[p].length));
 
-    btn.style.opacity = '0';
-    btn.style.position = 'absolute';
-    btn.style.left = `${center.width / 2}px`;
-    btn.style.top = `${center.height / 2}px`;
-    btn.style.transition = 'all 0.4s ease';
+  for (let i = 0; i < maxCards; i++) {
+    players.forEach(pos => {
+      const container = document.querySelector(`.player.${pos} .hand`);
+      const card = cardsByPlayer[pos][i];
+      if (!card) return;
 
-    setTimeout(() => {
+      setTimeout(() => {
+        const btn = document.createElement('button');
+        btn.className = `card ${getSuitName(card.suit)} draw-animate`;
+        btn.innerText = `${card.value}${card.suit}`;
+        btn.onclick = () => toggleCardSelection(i, btn);
+
+        const target = container.getBoundingClientRect();
+        const offsetX = target.left + target.width / 2 - center.left;
+        const offsetY = target.top + target.height / 2 - center.top;
+
+        btn.style.position = 'absolute';
+        btn.style.left = `${center.width / 2}px`;
+        btn.style.top = `${center.height / 2}px`;
+        btn.style.transform = 'translate(-50%, -50%) scale(0.3)';
+        btn.style.opacity = '0';
+        btn.style.transition = 'all 0.5s ease-out';
+
+        table.appendChild(btn);
+
+        // trigger distribuzione visiva
+        setTimeout(() => {
+          btn.style.left = `${offsetX}px`;
+          btn.style.top = `${offsetY}px`;
+          btn.style.opacity = '1';
+          btn.style.transform = 'translate(-50%, -50%) scale(1) rotate(3deg)';
+        }, 50);
+
+        // sposta realmente la carta nel container
+        setTimeout(() => {
+          btn.style.position = 'relative';
+          btn.style.left = '0';
+          btn.style.top = '0';
+          btn.style.transform = 'none';
+          btn.style.transition = 'none';
+          container.appendChild(btn);
+        }, 600);
+
+        if (withSound) dealSound.cloneNode(true).play();
+      }, delay);
+
+      delay += 200;
+    });
+  }
+}
+
+async function dealCardsRoundRobin(players, cardsByPlayer) {
+  const delay = (ms) => new Promise(res => setTimeout(res, ms));
+  const maxCards = Math.max(...players.map(p => cardsByPlayer[p].length));
+
+  for (let i = 0; i < maxCards; i++) {
+    for (const pos of players) {
+      const card = cardsByPlayer[pos][i];
+      if (!card) continue;
+
+      const container = document.getElementById(`${pos}-hand`);
+      if (!container) continue;
+
+      const btn = document.createElement('button');
+      btn.className = `card ${getSuitName(card.suit)}`;
+      btn.innerText = card.value + card.suit;
+      btn.style.opacity = '0';
+      btn.style.position = 'absolute';
+
+      const table = document.querySelector('.table').getBoundingClientRect();
+      btn.style.left = `${table.width / 2}px`;
+      btn.style.top = `${table.height / 2}px`;
+      btn.style.transition = 'all 0.4s ease';
+
+      container.appendChild(btn);
+
+      // Animate into place
+      await delay(10); // allow DOM to render
       btn.style.opacity = '1';
       btn.style.position = 'relative';
       btn.style.left = '0';
       btn.style.top = '0';
-      if (withSound) dealSound.cloneNode(true).play();
-    }, i * 250);
+      btn.classList.add('draw-animate');
 
-    container.appendChild(btn);
-  });
+      if (pos === 'bottom') {
+        btn.onclick = () => toggleCardSelection(i, btn);
+      }
+
+      await delay(300); // suspense delay
+    }
+  }
 }
+
+
 
 function renderBacksAnimated(containerId, count, playerId = null) {
   const container = document.getElementById(containerId);
@@ -293,12 +381,37 @@ function updateScoreTable(scores) {
   }
 }
 
+function animateDiscard(cardEl, targetEl) {
+  const clone = cardEl.cloneNode(true);
+  const fromRect = cardEl.getBoundingClientRect();
+  const toRect = targetEl.getBoundingClientRect();
+
+  clone.style.position = 'absolute';
+  clone.style.left = `${fromRect.left}px`;
+  clone.style.top = `${fromRect.top}px`;
+  clone.style.width = `${fromRect.width}px`;
+  clone.style.height = `${fromRect.height}px`;
+  clone.style.zIndex = 1000;
+  clone.style.transition = 'transform 0.4s ease, opacity 0.4s ease';
+  document.body.appendChild(clone);
+
+  const dx = toRect.left - fromRect.left;
+  const dy = toRect.top - fromRect.top;
+
+  requestAnimationFrame(() => {
+    clone.style.transform = `translate(${dx}px, ${dy}px) scale(0.6) rotate(10deg)`;
+    clone.style.opacity = '0';
+  });
+
+  setTimeout(() => clone.remove(), 500);
+}
+
 
 // Socket Events
 socket.on('playerListUpdate', renderPlayersList);
 
 // ✅ Fix distribuzione carte iniziali nella prima mano
-socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers }) => {
+socket.on('initialHand', async ({ hand, special, playerIndex, totalPlayers, allPlayers }) => {
   discardMap = totalPlayers === 3
     ? ['bottom', 'right', 'left']
     : ['bottom', 'right', 'top', 'left'];
@@ -310,6 +423,15 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
 
   playerHand = sortHandByValueDesc(hand);
   localPlayerIndex = playerIndex;
+  const counts = {};
+playerHand.forEach(card => {
+  counts[card.value] = (counts[card.value] || 0) + 1;
+});
+const pairValue = Object.keys(counts).find(k => counts[k] === 2);
+if (pairValue) {
+  pendingTrisValue = pairValue;
+  pendingTrisChecked = false;
+}
 
   // Reset pile scarti
   ['bottom', 'top', 'left', 'right'].forEach(pos => {
@@ -338,7 +460,16 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
   }
 
   // Mostra mano animata
-  renderHandAnimated(playerHand, 'bottom-hand', true);
+  const players = discardMap;
+  const cardsByPlayer = {};
+  
+  allPlayers.forEach((pid, i) => {
+    const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
+    const position = discardMap[relIndex];
+    cardsByPlayer[position] = pid === socket.id ? playerHand : Array(hand.length).fill({ value: '?', suit: '?' });
+  });
+  
+await dealCardsRoundRobin(players, cardsByPlayer);
 
   // Mostra carte dietro agli avversari e aggiorna nomi
   allPlayers.forEach((pid, i) => {
@@ -359,43 +490,144 @@ socket.on('initialHand', ({ hand, special, playerIndex, totalPlayers, allPlayers
   }
 });
 
+
 socket.on('yourTurn', () => {
+  // 🔄 Rimuovi evidenza da tutti i nomi
+  document.querySelectorAll('.player .name').forEach(n => n.classList.remove('turn-active'));
+
   isMyTurn = true;
   currentPhase = 'draw';
   updateStatus('🎯 È il tuo turno!');
   document.getElementById('actions').style.display = 'block';
   autoBtn.style.display = 'none';
+
+  // 🔥 Evidenzia solo "Tu"
+  const nameEl = document.querySelector('.player.bottom .name');
+  if (nameEl) nameEl.classList.add('turn-active');
+
   updateButtons();
 });
+
+
 
 socket.on('someoneTurn', ({ name }) => {
   updateStatus(`⏳ È il turno di ${name}`);
   isMyTurn = false;
   currentPhase = null;
   document.getElementById('actions').style.display = 'none';
+
+  // 🔥 Rimuovi highlight da tutti
+  document.querySelectorAll('.player .name').forEach(n => n.classList.remove('turn-active'));
+
+  // Trova posizione del nome attivo
+  const pos = Object.entries(playerNames).find(([id, n]) => n === name);
+  if (pos) {
+    const playerIndex = Object.keys(playerNames).indexOf(pos[0]);
+    const relIndex = (playerIndex - localPlayerIndex + Object.keys(playerNames).length) % Object.keys(playerNames).length;
+    const classPos = discardMap[relIndex];
+    const nameEl = document.querySelector(`.player.${classPos} .name`);
+    if (nameEl) nameEl.classList.add('turn-active');
+  }
+
   updateButtons();
 });
 
 socket.on('cardDrawn', (card) => {
   playerHand.push(card);
+
+  if (!pendingTrisChecked && card.value === pendingTrisValue) {
+    pendingTrisChecked = true;
+  
+    // 🔔 Mostra overlay speciale
+    const overlay = document.getElementById('specialOverlay');
+    if (overlay) {
+      const comboTitle = overlay.querySelector('.combo-title');
+      const comboPlayer = overlay.querySelector('.combo-player');
+      if (comboTitle) comboTitle.textContent = `TRIS di ${card.value}`;
+      if (comboPlayer) comboPlayer.textContent = 'Hai vinto 3€ da ognuno';
+      overlay.classList.remove('hidden');
+  
+      const drumroll = new Audio('drumroll.mp3');
+      drumroll.play();
+  
+      // 💰 Animazione oro sulle carte
+      const cards = document.querySelectorAll('#bottom-hand .card');
+      cards.forEach(c => {
+        if (c.innerText.startsWith(card.value)) c.classList.add('special-animate');
+      });
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        cards.forEach(c => c.classList.remove('special-animate'));
+      }, 4000);
+    }
+  
+    // 💵 Aggiorna saldo
+    const me = Object.values(playerNames).find(name => name === playerName);
+    if (me && playerStats[me]) {
+      playerStats[me].total += 3 * (discardMap.length - 1);
+      playerStats[me].hands += 0;
+    }
+  
+    updateScoreTable(Object.entries(playerStats).map(([name, { total }]) => ({ name, balance: total })));
+  }
+  
+
   playerHand = sortHandByValueDesc(playerHand);
   currentPhase = 'discard';
 
+  const handDiv = document.getElementById('bottom-hand');
   renderHand();
 
-  // 👉 Anima l'ultima carta aggiunta
-  const handDiv = document.getElementById('bottom-hand');
-  const cardEls = handDiv.querySelectorAll('.card');
-  const lastCard = cardEls[cardEls.length - 1];
-  if (lastCard) {
-    lastCard.classList.add('draw-animate');
-    lastCard.addEventListener('animationend', () => {
-      lastCard.classList.remove('draw-animate');
+  // 💎 Controllo tris iniziale
+  if (!pendingTrisChecked && pendingTrisValue && card.value === pendingTrisValue) {
+    pendingTrisChecked = true;
+    const gain = 3 * (discardMap.length - 1); // 3€ da ogni avversario
+
+    // Aggiorna stato locale
+    const me = Object.keys(playerStats).find(name => name === playerName);
+    if (me) {
+      playerStats[me].total += gain;
+    }
+
+    // Overlay animazione TRIS
+    const overlay = document.createElement('div');
+    overlay.id = 'specialOverlay';
+    overlay.innerHTML = `
+      <div class="combo-content">
+        <div class="combo-title">TRIS DI ${pendingTrisValue}</div>
+        <div class="combo-player">+${gain}€ da tutti!</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const drumroll = new Audio('drumroll.mp3');
+    drumroll.play();
+
+    const cards = document.querySelectorAll('#bottom-hand .card');
+    cards.forEach(c => {
+      if (c.innerText.startsWith(pendingTrisValue)) {
+        c.classList.add('special-animate');
+      }
     });
+
+    setTimeout(() => {
+      overlay.remove();
+      cards.forEach(c => c.classList.remove('special-animate'));
+    }, 4000);
+  }
+
+  // Animazione draw
+  const cardEls = handDiv.querySelectorAll('.card');
+  const index = playerHand.findIndex(c => c.value === card.value && c.suit === card.suit);
+  const target = cardEls[index];
+  if (target) {
+    target.classList.add('draw-animate');
+    target.addEventListener('animationend', () => target.classList.remove('draw-animate'));
   }
 
   updateButtons();
 });
+
 
 
 // ✅ FIX LOGICA SCARTO (app.js): sistemiamo logica K e carte normali
@@ -404,8 +636,15 @@ socket.on('cardDrawn', (card) => {
 socket.on('cardDiscarded', (cards) => {
   cards.forEach(card => {
     const index = playerHand.findIndex(c => c.value === card.value && c.suit === card.suit);
-    if (index !== -1) playerHand.splice(index, 1);
+    if (index !== -1) {
+      const handDiv = document.getElementById('bottom-hand');
+      const cardEls = handDiv.querySelectorAll('.card');
+      const el = cardEls[index];
+      if (el) animateDiscard(el, document.getElementById('bottom-pile'));
+      playerHand.splice(index, 1);
+    }
   });
+  
 
   const pile = document.getElementById('bottom-pile');
   const pileK = document.getElementById('bottom-pile-k');
@@ -525,9 +764,15 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
   const pile = document.getElementById(`${pos}-pile`);
   if (!pile || !pileK) return;
 
+  const fromHand = document.querySelector(`.player.${pos} .hand .card-back`);
+if (fromHand) {
+  animateDiscard(fromHand, fromHand, pile);
+}
+
   let updatedKingCount = parseInt(pileK.dataset.count || '0');
   const kingCards = [];
   const normalCards = [];
+
   cards.forEach(card => {
     const text = `${card.value}${card.suit}`;
     if (card.value === 'K') {
@@ -561,20 +806,20 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
     let fullStack = pile.dataset.fullstack ? pile.dataset.fullstack.split(',') : [];
     fullStack = [...fullStack, ...normalCards];
     pile.dataset.fullstack = fullStack.join(',');
-  
+
     pile.innerHTML = '';
     const last = fullStack[fullStack.length - 1];
-  
+
     const span = document.createElement('span');
     span.className = 'card top-card discard-animate';
     span.innerText = last;
     pile.appendChild(span);
-  
+
     const stack = document.createElement('div');
     stack.className = 'discard-stack';
     stack.tabIndex = -1;
-  
-    // ✅ POSIZIONE E ROTAZIONE
+
+    // ✅ Posizione e rotazione
     if (pos === 'left') {
       stack.style.position = 'absolute';
       stack.style.top = '0';
@@ -584,27 +829,21 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
     } else if (pos === 'right') {
       stack.style.position = 'absolute';
       stack.style.top = '0';
-      stack.style.right = 'calc(100% + 12px)';
+      stack.style.left = 'calc(100% + 12px)';
       stack.style.transform = 'rotate(-90deg)';
-      stack.style.transformOrigin = 'top right';
-      stack.style.zIndex = '1000'; // Assicura che lo stack sia sopra altri elementi
-      // Aggiunge spazio extra per evitare il taglio
-      pile.style.position = 'relative';
-      pile.style.paddingLeft = '150px'; // Spazio extra a sinistra per lo stack
+      stack.style.transformOrigin = 'top left';
     }
-  
-    span.addEventListener('click', () => {
-      stack.classList.toggle('show');
-      if (stack.classList.contains('show')) {
-        stack.scrollTop = stack.scrollHeight;
-        stack.focus();
-      }
+
+    span.addEventListener('mouseenter', () => {
+      stack.classList.add('show');
+      stack.scrollTop = stack.scrollHeight;
+      stack.focus();
     });
-  
-    stack.addEventListener('mouseleave', () => {
+
+    span.addEventListener('mouseleave', () => {
       stack.classList.remove('show');
     });
-  
+
     stack.addEventListener('wheel', (e) => {
       if (stack.classList.contains('show')) {
         e.preventDefault();
@@ -612,14 +851,14 @@ socket.on('cardDiscardedByOther', ({ from, cards }) => {
         stack.scrollTop += e.deltaY;
       }
     }, { passive: false });
-  
+
     fullStack.forEach(text => {
       const c = document.createElement('span');
       c.className = 'card mini';
       c.innerText = text;
       stack.appendChild(c);
     });
-  
+
     pile.appendChild(stack);
   }
 });
@@ -728,6 +967,49 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores
   setTimeout(() => winOverlay.remove(), 4000);
   if (Array.isArray(finalScores)) updateScoreTable(finalScores);
 
+  if (winner === socket.id && finalScores?.length >= 2) {
+    const myScore = finalScores.find(p => p.id === socket.id);
+    const opponents = finalScores.filter(p => p.id !== socket.id);
+  
+    const lowerOpponent = opponents.find(p => p.score < myScore.score);
+    if (lowerOpponent) {
+      const lowerPos = Object.keys(playerNames).find(
+        id => playerNames[id] === lowerOpponent.name
+      );
+  
+      // 🔎 Conta gli assi nella sua mano
+      const hisHand = lowerOpponent.hand || [];
+      const aceCount = hisHand.filter(c => c.value === 'A').length;
+  
+      // 🔎 Conta i Re scartati
+      const discardedKings = (lowerOpponent.discarded || []).filter(c => c.value === 'K').length;
+  
+      const playersCount = finalScores.length;
+      const penaltyEach = 1 + aceCount + discardedKings;
+      const totalPenalty = penaltyEach * playersCount;
+  
+      // 📉 Scala dal vincitore e aggiunge all'altro
+      myScore.balance -= totalPenalty;
+      lowerOpponent.balance += totalPenalty;
+  
+      updateStatus(`😬 Hai chiuso ma ${lowerOpponent.name} aveva meno punti. Paghi ${totalPenalty}€`);
+  
+      // 💡 Overlay animazione
+      const overlay = document.createElement('div');
+      overlay.className = 'penalty-overlay';
+      overlay.innerHTML = `
+        <div class="penalty-message">
+          😓 Penalità Kang! Hai pagato <b>${totalPenalty}€</b> a <b>${lowerOpponent.name}</b><br>
+          (1€ chiusura + ${aceCount} Assi + ${discardedKings} Re) × ${playersCount} giocatori
+        </div>
+      `;
+      document.body.appendChild(overlay);
+  
+      setTimeout(() => overlay.remove(), 4000);
+    }
+  }
+  
+
   if (Array.isArray(finalScores)) {
     updateScoreTable(finalScores);
     finalScores.forEach(({ name, balance }) => {
@@ -835,3 +1117,14 @@ document.getElementById('newRoundBtn').onclick = () => {
   updateStatus('🔄 Inizio nuova mano...');
 };
 
+setTimeout(() => {
+  const pile = document.getElementById('right-pile');
+  if (!pile) return;
+
+  const stack = pile.querySelector('.discard-stack');
+  if (!stack) return;
+
+  stack.classList.add('show');       // forza visibilità
+  stack.style.display = 'flex';      // utile per debugging
+  stack.scrollTop = stack.scrollHeight;
+}, 1000);

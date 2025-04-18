@@ -96,6 +96,30 @@ button:hover {
   transform: none;
 }
 
+.player.bottom .hand {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  height: auto;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.player.bottom .hand .card {
+  position: relative;
+  transform: none;
+  left: auto;
+  bottom: auto;
+  transition: all 0.3s ease-out;
+}
+
+.player.bottom .hand .card:hover {
+  transform: translateY(-10px) scale(1.05);
+  z-index: 2;
+}
+
+
+
 .player.left {
   grid-area: left;
   justify-content: center;
@@ -104,11 +128,10 @@ button:hover {
 }
 
 .player.right {
-  position: absolute;
-  top: 50%;
-  right: -30px;
-  transform: translateY(-50%);
-  z-index: 10;
+  grid-area: right;
+  justify-content: center;
+  align-items: center;
+  transform: translateX(190px);
 }
 
 
@@ -131,8 +154,7 @@ button:hover {
 
 
 .player.right .hand {
-  display: flex;
-  flex-direction: row; /* <- importante! mantieni le carte in riga */
+  flex-direction: row;
   gap: 10px;
   transform: rotate(90deg);
   transform-origin: center center;
@@ -150,7 +172,7 @@ button:hover {
 
 .player.right .name {
   writing-mode: vertical-rl;
-  transform: rotate(180deg) translateX(-70px); /* sposta verso il centro */
+  transform: rotate(180deg) translateX(-70px);
   position: relative;
   top: 190px;
   margin-bottom: 8px;
@@ -245,6 +267,9 @@ button:hover {
   display: flex;
   gap: 10px;
   justify-content: center;
+  position: relative;
+  top: -90px;
+  left: 53px;
 }
 
 .animate-deal {
@@ -391,29 +416,48 @@ button:hover {
 }
 
 .player.right .discards {
-  margin-left: -110px;
-  transform: rotate(-90deg);
-  transform-origin: bottom center;
+    margin-left: -110px;                     /* stesso offset di sinistra */
+    transform: rotate(-90deg);              /* simmetrico del left */
+    transform-origin: bottom center;
+    position: relative;
+    top: 65px;
+    z-index: 10;
+  }      /* Rimuove tutte le trasformazioni */
+
+.player.right .discard-stack {
+    position: absolute;
+    top: 200%;           /* Posiziona la pila degli scarti sotto */
+    left: 0;
+    transform: translateY(-10px);
+    z-index: 999;
+    display: none;
+    max-height: 240px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.95);
+    padding: 6px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #000;
+    flex-direction: column;
+    gap: 2px;
+}
+
+
+.player.right .discard-stack .card {
+    transform: rotate(90deg);  /* Mantiene le carte leggibili */
+}
+
+.player.right .pile-normal:hover .discard-stack,
+.player.right .pile-normal .discard-stack.show {
+    display: flex;
+}
+
+.player.right .pile-normal,
+.player.right .pile-k {
   position: relative;
-  top: 55px;
+  overflow: visible;
   z-index: 10;
 }
 
-.player.left .discard-stack {
-  transform: none;
-  transform-origin: top right;
-  top: 150%;         /* parte subito sotto la pila */
-  left: 0;
-  margin-top: -60px;
-}
-
-.player.right .discard-stack {
-  transform: none;
-  transform-origin: bottom center;
-  top: 100%;         /* parte sotto la pila */
-  left: 0;
-  margin-top: 60px;
-}
 
 .player.left .discard-stack .card,
 .player.right .discard-stack .card {
@@ -429,6 +473,9 @@ button:hover {
   left: 0;
   z-index: 1;
 }
+
+
+
 
 .pile .card:last-child {
   z-index: 10;
@@ -527,19 +574,25 @@ button:hover {
 }
 
 @keyframes drawIn {
-  from {
-    transform: scale(1.4) rotate(-10deg);
-    opacity: 0;
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);  /* Parte dal centro del tavolo */
+    opacity: 0.8;
   }
-  to {
-    transform: scale(1) rotate(0deg);
+  50% {
+    transform: translate(-25%, -25%) scale(0.9);  /* Punto intermedio nel movimento */
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);          /* Arriva nella posizione finale */
     opacity: 1;
   }
 }
 
 .draw-animate {
   animation: drawIn 0.5s ease-out;
-  z-index: 2;
+  transform-origin: center center;
+  position: relative;
+  z-index: 100;  /* Assicura che la carta sia sopra le altre durante l'animazione */
 }
 
 .hand-scrollable {
@@ -607,23 +660,41 @@ button:hover {
     background: #222;
   }
 
-  .player.left .hand,
-  .player.right .hand {
-    transform: none;
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: center;
+  .player.left .hand {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    transform: rotate(-90deg);
+    transform-origin: center center;
+    margin-top: 10px;
   }
 
-  .player.left,
-  .player.right {
+  .player.right .hand {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    transform: rotate(90deg);
+    transform-origin: center center;
+    margin-top: 10px;
+  }
+  
+  
+
+  .player.left {
     transform: none;
     margin: 0 auto;
   }
 
-  .player.left .discards,
-  .player.right .discards {
+
+  .player.left .discards {
     transform: none;
+    top: auto;
+    margin: 6px auto;
+    position: relative;
+  }
+
+.player.right .discards {
+    transform: rotate(90deg) ;
     top: auto;
     margin: 6px auto;
     position: relative;
@@ -631,11 +702,15 @@ button:hover {
 
   .player.left .name,
   .player.right .name {
-    writing-mode: horizontal-tb;
-    transform: none;
-    top: auto;
-    font-size: 0.75rem;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg) translateX(-70px); /* solo il right ha rotate(180deg) */
+    position: relative;
+    top: 180px;
+    margin-bottom: 8px;
+    white-space: nowrap;
   }
+  
+  
 
   .table {
     width: 100vw;
@@ -764,60 +839,6 @@ button:hover {
   transform: scale(1.05);
 }
 
-.summary-container {
-  position: fixed; /* ✅ Fuori dal flusso del layout */
-  top: 180px;
-  right: -40px; /* ✅ Spostata fuori dal tavolo */
-  z-index: 1000;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px 15px;
-  border-radius: 8px;
-  color: white;
-  font-size: 0.85rem;
-  backdrop-filter: blur(4px);
-  transition: right 0.3s ease;
-}
-
-
-#summaryTable {
-  margin-left: 60px;
-  margin-top: 20px;
-  border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.07);
-  color: white;
-  font-family: 'Noto Sans Symbols', sans-serif;
-  border-radius: 10px;
-  overflow: hidden;
-  min-width: 220px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.4);
-}
-
-#summaryTable th, #summaryTable td {
-  padding: 10px 16px;
-  text-align: left;
-}
-
-#summaryTable th {
-  background: rgba(255,255,255,0.12);
-  font-weight: bold;
-}
-
-#summaryTable tr:nth-child(even) {
-  background: rgba(255,255,255,0.05);
-}
-
-#summaryTable tr:hover {
-  background: rgba(255,255,255,0.15);
-}
-
-#summaryTable td.balance-positive {
-  color: #00ff88;
-}
-
-#summaryTable td.balance-negative {
-  color: #ff5555;
-}
-
 .balance-positive {
   color: #00ff88;
   font-weight: bold;
@@ -879,4 +900,54 @@ button:hover {
 
 body, main {
   overflow: visible !important;
+}
+
+@keyframes drawCard {
+  0% {
+    transform: scale(0.6) rotate(-15deg) translateY(-80px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg) translateY(-10px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg) translateY(0);
+    opacity: 1;
+  }
+}
+
+.card.draw-animate {
+  animation: drawCard 0.5s ease-out forwards;
+  z-index: 20;
+  box-shadow: 0 0 10px gold;
+  border: 2px solid #ff0;
+  transition: all 0.4s ease-out;
+}
+
+@keyframes flyToDiscard {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.6) translate(120px, -80px) rotate(15deg); /* adattato dinamicamente */
+    opacity: 0;
+  }
+}
+
+.card.fly-discard {
+  animation: flyToDiscard 0.4s ease forwards;
+  z-index: 9999;
+  position: absolute !important;
+  pointer-events: none;
+}
+
+@keyframes pulse-turn {
+  0%, 100% { color: #0f0; text-shadow: 0 0 6px #0f0; }
+  50%      { color: #8f8; text-shadow: 0 0 12px #0f0; }
+}
+
+.player .name.turn-active {
+  animation: pulse-turn 1s ease-in-out infinite;
 }

@@ -18,6 +18,26 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 const rooms = {};
 
+function layoutFan(container) {
+  const cards = container.querySelectorAll('.card');
+  const total = cards.length;
+  const spread = 40; // distanza tra le carte
+  const angle = 12; // massimo angolo totale
+
+  cards.forEach((card, i) => {
+    const offset = (i - (total - 1) / 2); // centra le carte
+    const rotation = offset * (angle / total);
+    const x = offset * spread;
+
+    card.style.left = `calc(50% + ${x}px)`;
+    card.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+    card.style.zIndex = i; // layering corretto
+  });
+}
+
+
+
+
 io.on('connection', (socket) => {
   console.log('✅ Connesso:', socket.id);
 
