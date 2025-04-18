@@ -971,3 +971,4 @@ body, main {
 .player .name.turn-active {
   animation: pulse-turn 1s ease-in-out infinite;
 }
+}
