@@ -778,6 +778,8 @@ button:hover {
   color: #fff;
 }
 
+
+
 @keyframes glow {
   0%, 100% { text-shadow: 0 0 15px gold; }
   50% { text-shadow: 0 0 35px gold; }
@@ -971,4 +973,88 @@ body, main {
 .player .name.turn-active {
   animation: pulse-turn 1s ease-in-out infinite;
 }
+
+.hand.disabling-scroll {
+  overflow: hidden !important;
+}
+
+/* Aggiungi in <style> */
+#specialComboOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.combo-message {
+  font-size: 3rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  padding: 20px;
+  border-radius: 20px;
+  animation: combo-fadein 0.4s ease-in-out forwards;
+}
+
+.combo-icon {
+  font-size: 4rem;
+  margin-right: 20px;
+}
+
+.combo-tris   .combo-text { color: #ffcc00; animation: glow-tris 2s ease infinite; }
+.combo-scala  .combo-text { color: #00ccff; animation: glow-scala 2s ease infinite; }
+.combo-poker  .combo-text { color: #ff3333; animation: glow-poker 2s ease infinite; }
+.combo-358   .combo-text { color: #ffcc33; animation: glow-358 2s ease-in-out infinite; }
+.combo-sr    .combo-text { color: #cc66ff; animation: glow-sr 2s ease-in-out infinite; }
+.combo-sc    .combo-text { color: #33ffcc; animation: glow-sc 2s ease-in-out infinite; }
+.combo-colore .combo-text { color: #66ccff; animation: glow-colore 2s ease-in-out infinite; }
+.combo-50    .combo-text { color: #ff66b2; animation: glow-50 2s ease-in-out infinite; }
+
+@keyframes glow-tris   { 0%, 100% { text-shadow: 0 0 20px #fff000; } 50% { text-shadow: 0 0 40px #ffcc00; } }
+@keyframes glow-scala  { 0%, 100% { text-shadow: 0 0 20px #00ccff; } 50% { text-shadow: 0 0 40px #66ffff; } }
+@keyframes glow-poker  { 0%, 100% { text-shadow: 0 0 20px #ff3333; } 50% { text-shadow: 0 0 40px #ff6666; } }
+@keyframes glow-358 {
+  0%, 100% { text-shadow: 0 0 20px #ffcc33, 0 0 30px #ffaa00; }
+  50%      { text-shadow: 0 0 40px #ffff00, 0 0 50px #ffcc00; }
+}
+@keyframes glow-sr {
+  0%, 100% { text-shadow: 0 0 20px #cc66ff, 0 0 30px #9933ff; }
+  50%      { text-shadow: 0 0 40px #e699ff, 0 0 60px #d633ff; }
+}
+@keyframes glow-sc {
+  0%, 100% { text-shadow: 0 0 20px #33ffcc, 0 0 30px #00ffaa; }
+  50%      { text-shadow: 0 0 40px #66ffe6, 0 0 60px #33ffcc; }
+}
+@keyframes glow-colore {
+  0%, 100% { text-shadow: 0 0 20px #66ccff, 0 0 30px #3399ff; }
+  50%      { text-shadow: 0 0 40px #99ddff, 0 0 60px #66ccff; }
+}
+@keyframes glow-50 {
+  0%, 100% { text-shadow: 0 0 20px #ff66b2, 0 0 30px #ff3399; }
+  50%      { text-shadow: 0 0 40px #ff99cc, 0 0 60px #ff66b2; }
+}
+@keyframes combo-fadein {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.results-panel {
+  background: #f7f7f7;
+  border: 2px solid #444;
+  padding: 16px;
+  margin-top: 20px;
+  font-family: 'Noto Sans Symbols', sans-serif;
+  border-radius: 8px;
+}
+.results-panel div {
+  margin-bottom: 10px;
+}
+.results-panel h3 {
+  margin-top: 0;
+}
+
+
 }

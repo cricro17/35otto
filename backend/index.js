@@ -155,49 +155,49 @@ room.lastDiscardedKCounts[socket.id] = (room.lastDiscardedKCounts[socket.id] || 
   
   // Aggiornamento funzione gameEnded nel backend
   socket.on('kang', () => {
-    console.log(`[SERVER] ${socket.id} ha chiamato kang`);
     const roomCode = findPlayerRoom(socket.id);
     const room = rooms[roomCode];
     if (!room || !room.hands) return;
   
-    const winnerId = socket.id;
-    const winnerHand = room.hands[winnerId];
-    const discardedKings = room.lastDiscardedKCounts?.[winnerId] || 0;
-    const acesInHand = winnerHand.filter(c => c.value === 'A').length;
-    const totalOpponents = room.players.length - 1;
-    const base = 1;
-    const gainPerOpponent = (base + acesInHand + discardedKings);
-    const totalWinnings = gainPerOpponent * totalOpponents;
-  
-    const winnerName = room.players.find(p => p.id === winnerId)?.name || "Qualcuno";
-  
-    const finalScores = room.players.map(p => {
-      const isWinner = p.id === winnerId;
+    const callerId = socket.id;
+    const callerHand = room.hands[callerId];
+    if (!callerHand) {
+      console.error("Nessuna mano trovata per il chiamante:", callerId);
+      socket.emit('kang_result', { error: "Nessuna mano trovata per questo giocatore." });
+      return;
+    }
+
+
+    console.log("room.hands:", room.hands);
+    const finalScores = Object.entries(room.hands).map(([playerId, hand]) => {
+      console.log("🔥 FINAL SCORE FIX IN USO 🔥");
       return {
-        name: p.name,
-        balance: isWinner ? totalWinnings : -gainPerOpponent
+        id: playerId,
+        name: (room.players.find(p => p.id === playerId) || {}).name || 'Giocatore',
+        hand,
+        score: calculatePoints(hand),
+        discarded: room.discarded?.[playerId] || [],
+        balance: 0
       };
     });
     
-    room.players.forEach(p => {
-      const hand = room.hands[p.id];
-      const score = calculatePoints(hand);
-      const isWinner = p.id === winnerId;
     
-      io.to(p.id).emit('gameEnded', {
-        winner: winnerId,
-        winnerName,
-        reason: isWinner
-          ? `ha vinto con ${score} punti! (+${acesInHand} A, +${discardedKings} K scartati, x${totalOpponents} avversari)`
-          : `ha perso con ${score} punti.`,
-        totalWinnings: isWinner ? totalWinnings : -gainPerOpponent,
-        aces: acesInHand,
-        kings: discardedKings,
-        finalScores
-      });
+  
+    io.to(roomCode).emit('kang_result', {
+      scores: finalScores,
+      callerId,
+      combination: evaluateHand(callerHand)
     });
+  
+    console.log("KANG invocato da:", callerId);
+    console.log("FinalScores IDs:", finalScores.map(p => p.id));
+    console.log("FINAL SCORES OGGETTI:", finalScores);
+    console.log("FINAL SCORES:", finalScores);
+    console.log("FINAL SCORE IDS:", finalScores.map(p => [p.id, typeof p.id]));
     
   });
+  
+  
 
 socket.on('newRound', () => {
   const code = findPlayerRoom(socket.id);
@@ -284,14 +284,19 @@ function startGame(code) {
     });
 
     if (result) {
-      room.players.forEach(pp => {
-        io.to(pp.id).emit('gameEnded', {
-          winner: p.id,
-          reason: `ha una combinazione speciale: ${result.combination}`
-        });
+      const type = result.combination; // esempio: 'Scala', 'Poker', 'Full', 'Tris'
+      const value = result.value || '?'; // opzionale: A, J, Q ecc.
+      const playerName = p.name || playerNames[p.id] || 'Qualcuno';
+    
+      io.to(code).emit('showSpecialCombo', {
+        type,
+        value,
+        player: playerName
       });
+    
       winner = true;
     }
+    
   });
 
   if (!winner) {

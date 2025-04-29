@@ -44,8 +44,15 @@ function evaluateHand(hand) {
   const uniqueSuits = [...new Set(suitsOnly)];
 
   // Converti le carte in valori numerici per controllare scale
-  const valueOrder = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-  const numericValues = valuesOnly.map(v => valueOrder.indexOf(v)).sort((a, b) => a - b);
+  const valueMap = {
+    'A': 1,
+    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
+    '7': 7, '8': 8, '9': 9, '10': 10,
+    'J': 10, 'Q': 10, 'K': 10
+  };
+  
+  const numericValues = valuesOnly.map(v => valueMap[v]).sort((a, b) => a - b);
+  
 
   const isSequence = numericValues.every((v, i, arr) => i === 0 || v === arr[i - 1] + 1);
   const isSameSuit = uniqueSuits.length === 1;
@@ -85,6 +92,17 @@ function evaluateHand(hand) {
 
   return null; // Nessuna combinazione speciale
 }
+
+function calculatePoints(hand) {
+  return hand.reduce((sum, card) => {
+    const face = ['J', 'Q', 'K'];
+    const val = face.includes(card.value) ? 10 :
+                card.value === 'A' ? 1 :
+                Math.min(parseInt(card.value), 10);
+    return sum + val;
+  }, 0);
+}
+
 
 module.exports = {
   createDeck,

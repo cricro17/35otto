@@ -14,6 +14,7 @@ const playerNames = {};
 let discardMap = [];
 let pendingTrisValue = null;
 let pendingTrisChecked = false;
+let hasDrawnOnce = false; // definiscila globale in alto
 
 
 const statusEl = document.getElementById('status');
@@ -33,20 +34,25 @@ style.innerHTML = `
   top: 0; left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
+  background: radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.95) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   overflow: hidden;
+  animation: fadeIn 0.5s ease-in-out;
 }
+
 .winner-message {
-  font-size: 3rem;
+  font-size: 3.5rem;
   color: gold;
-  font-weight: bold;
-  text-shadow: 2px 2px 5px #000;
+  font-weight: 900;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
   z-index: 2;
+  letter-spacing: 1.5px;
+  animation: glowPulse 1.5s ease-in-out infinite;
 }
+
 .coin {
   position: absolute;
   top: -50px;
@@ -55,10 +61,53 @@ style.innerHTML = `
   color: gold;
   z-index: 1;
 }
+
+.penalty-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.penalty-message {
+  background: #911;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px #f00;
+}
+
 @keyframes dropCoin {
   0% { transform: translateY(0); opacity: 1; }
   100% { transform: translateY(100vh); opacity: 0; }
-}`;
+}
+
+
+@keyframes glowPulse {
+  0% { text-shadow: 0 0 10px gold; }
+  50% { text-shadow: 0 0 30px gold; }
+  100% { text-shadow: 0 0 10px gold; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulseText {
+  0% { transform: scale(1); text-shadow: 0 0 5px #fff, 0 0 10px #ffd700; }
+  50% { transform: scale(1.1); text-shadow: 0 0 15px #fff, 0 0 35px #ffd700; }
+  100% { transform: scale(1); text-shadow: 0 0 5px #fff, 0 0 10px #ffd700; }
+}
+`;
 document.head.appendChild(style);
 
 function updateStatus(msg) {
@@ -278,6 +327,12 @@ function dealCardsToPlayers(players, cardsByPlayer, withSound = true) {
 }
 
 async function dealCardsRoundRobin(players, cardsByPlayer) {
+  document.querySelectorAll('.hand').forEach(h => {
+    h.style.overflow = 'hidden';              // nasconde scroll
+    h.classList.add('disabling-scroll');      // blocca gesture/scroll
+    h.innerHTML = '';                         // svuota DOM mano
+  });
+
   const delay = (ms) => new Promise(res => setTimeout(res, ms));
   const maxCards = Math.max(...players.map(p => cardsByPlayer[p].length));
 
@@ -302,7 +357,6 @@ async function dealCardsRoundRobin(players, cardsByPlayer) {
 
       container.appendChild(btn);
 
-      // Animate into place
       await delay(10); // allow DOM to render
       btn.style.opacity = '1';
       btn.style.position = 'relative';
@@ -314,10 +368,17 @@ async function dealCardsRoundRobin(players, cardsByPlayer) {
         btn.onclick = () => toggleCardSelection(i, btn);
       }
 
-      await delay(300); // suspense delay
+      await delay(300);
     }
   }
+
+  // ✅ Solo alla fine ripristina scroll e gesture
+  document.querySelectorAll('.hand').forEach(h => {
+    h.style.overflow = '';
+    h.classList.remove('disabling-scroll');
+  });
 }
+
 
 
 
@@ -421,6 +482,11 @@ socket.on('initialHand', async ({ hand, special, playerIndex, totalPlayers, allP
     topEl.classList.toggle('hidden', totalPlayers === 3);
   }
 
+   // 🧹 Reset completo
+   playerHand = [];
+   selectedIndexes = [];
+   document.getElementById('bottom-hand').innerHTML = '';
+
   playerHand = sortHandByValueDesc(hand);
   localPlayerIndex = playerIndex;
   const counts = {};
@@ -460,16 +526,40 @@ if (pairValue) {
   }
 
   // Mostra mano animata
-  const players = discardMap;
-  const cardsByPlayer = {};
-  
-  allPlayers.forEach((pid, i) => {
-    const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
-    const position = discardMap[relIndex];
-    cardsByPlayer[position] = pid === socket.id ? playerHand : Array(hand.length).fill({ value: '?', suit: '?' });
-  });
-  
+const players = discardMap;
+
+const cardsByPlayer = {};
+allPlayers.forEach((pid, i) => {
+  const relIndex = (i - playerIndex + totalPlayers) % totalPlayers;
+  const position = discardMap[relIndex];
+
+  if (pid === socket.id) {
+    cardsByPlayer[position] = playerHand;
+  } else {
+    // mostra solo schiena (verrà gestito da renderBacksAnimated)
+    cardsByPlayer[position] = []; // <-- qui cambia
+  }
+});
 await dealCardsRoundRobin(players, cardsByPlayer);
+
+if (special && hand.length === 5) {
+  setTimeout(() => {
+    const overlay = document.createElement('div');
+    overlay.id = 'winnerOverlay';
+    overlay.innerHTML = `
+      <div class="winner-message pulse">
+        🎉 ${playerName.toUpperCase()} HA UNA ${special.combination.toUpperCase()} (x${special.multiplier})
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const drumroll = new Audio('drumroll.mp3');
+    drumroll.play();
+
+    setTimeout(() => overlay.remove(), 4000);
+  }, 800); // attesa minima
+}
+
 
   // Mostra carte dietro agli avversari e aggiorna nomi
   allPlayers.forEach((pid, i) => {
@@ -489,6 +579,29 @@ await dealCardsRoundRobin(players, cardsByPlayer);
     updateStatus(`✨ Hai una combinazione speciale: ${special.combination} (x${special.multiplier})`);
   }
 });
+
+socket.on('showSpecialCombo', ({ type, value, player }) => {
+  const overlay = document.createElement('div');
+  overlay.id = 'specialComboOverlay';
+  overlay.className = 'combo-fx';
+
+  overlay.innerHTML = `
+    <div class="combo-message">
+      <span class="combo-icon">🎉</span>
+      <span class="combo-text">${type.toUpperCase()} DI ${value.toUpperCase()}<br><small>(${player})</small></span>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const fxSound = new Audio('combo.mp3');
+  fxSound.play();
+
+  setTimeout(() => overlay.remove(), 4000);
+});
+
+
+
 
 
 socket.on('yourTurn', () => {
@@ -532,101 +645,85 @@ socket.on('someoneTurn', ({ name }) => {
   updateButtons();
 });
 
-socket.on('cardDrawn', (card) => {
-  playerHand.push(card);
 
-  if (!pendingTrisChecked && card.value === pendingTrisValue) {
-    pendingTrisChecked = true;
-  
-    // 🔔 Mostra overlay speciale
-    const overlay = document.getElementById('specialOverlay');
-    if (overlay) {
-      const comboTitle = overlay.querySelector('.combo-title');
-      const comboPlayer = overlay.querySelector('.combo-player');
-      if (comboTitle) comboTitle.textContent = `TRIS di ${card.value}`;
-      if (comboPlayer) comboPlayer.textContent = 'Hai vinto 3€ da ognuno';
-      overlay.classList.remove('hidden');
-  
-      const drumroll = new Audio('drumroll.mp3');
-      drumroll.play();
-  
-      // 💰 Animazione oro sulle carte
-      const cards = document.querySelectorAll('#bottom-hand .card');
-      cards.forEach(c => {
-        if (c.innerText.startsWith(card.value)) c.classList.add('special-animate');
-      });
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        cards.forEach(c => c.classList.remove('special-animate'));
-      }, 4000);
-    }
-  
-    // 💵 Aggiorna saldo
-    const me = Object.values(playerNames).find(name => name === playerName);
-    if (me && playerStats[me]) {
-      playerStats[me].total += 3 * (discardMap.length - 1);
-      playerStats[me].hands += 0;
-    }
-  
-    updateScoreTable(Object.entries(playerStats).map(([name, { total }]) => ({ name, balance: total })));
-  }
-  
-
-  playerHand = sortHandByValueDesc(playerHand);
-  currentPhase = 'discard';
-
-  const handDiv = document.getElementById('bottom-hand');
-  renderHand();
-
-  // 💎 Controllo tris iniziale
-  if (!pendingTrisChecked && pendingTrisValue && card.value === pendingTrisValue) {
-    pendingTrisChecked = true;
-    const gain = 3 * (discardMap.length - 1); // 3€ da ogni avversario
-
-    // Aggiorna stato locale
-    const me = Object.keys(playerStats).find(name => name === playerName);
-    if (me) {
-      playerStats[me].total += gain;
-    }
-
-    // Overlay animazione TRIS
-    const overlay = document.createElement('div');
-    overlay.id = 'specialOverlay';
-    overlay.innerHTML = `
-      <div class="combo-content">
-        <div class="combo-title">TRIS DI ${pendingTrisValue}</div>
-        <div class="combo-player">+${gain}€ da tutti!</div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const drumroll = new Audio('drumroll.mp3');
-    drumroll.play();
-
-    const cards = document.querySelectorAll('#bottom-hand .card');
-    cards.forEach(c => {
-      if (c.innerText.startsWith(pendingTrisValue)) {
-        c.classList.add('special-animate');
-      }
-    });
-
-    setTimeout(() => {
-      overlay.remove();
-      cards.forEach(c => c.classList.remove('special-animate'));
-    }, 4000);
-  }
-
-  // Animazione draw
-  const cardEls = handDiv.querySelectorAll('.card');
-  const index = playerHand.findIndex(c => c.value === card.value && c.suit === card.suit);
-  const target = cardEls[index];
-  if (target) {
-    target.classList.add('draw-animate');
-    target.addEventListener('animationend', () => target.classList.remove('draw-animate'));
-  }
-
+socket.on('yourTurn', () => {
+  isMyTurn = true;
+  currentPhase = 'draw';
+  hasDrawnOnce = false; // ✅ reset ad inizio turno
+  updateStatus('🎯 È il tuo turno!');
+  document.getElementById('actions').style.display = 'block';
+  autoBtn.style.display = 'none';
   updateButtons();
 });
+
+socket.on('cardDrawn', (card) => {
+  playerHand.push(card);
+  playerHand = sortHandByValueDesc(playerHand);
+  currentPhase = 'discard';
+  isMyTurn = true;
+
+  renderHand();
+
+  const handDiv = document.getElementById('bottom-hand');
+  const index = playerHand.findIndex(c => c.value === card.value && c.suit === card.suit);
+  const target = handDiv.children[index];
+  if (target) {
+    target.classList.add('draw-animate');
+    target.addEventListener('animationend', () => target.classList.remove('draw-animate'), { once: true });
+  }
+
+  handDiv.scrollLeft = 0;
+  handDiv.style.overflow = 'hidden';
+  setTimeout(() => handDiv.style.overflow = 'auto', 500);
+
+  updateButtons();
+
+  // ✅ TRIS solo alla prima pescata
+  if (!hasDrawnOnce) {
+    hasDrawnOnce = true;
+
+    if (!pendingTrisChecked && card.value === pendingTrisValue) {
+      pendingTrisChecked = true;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'winnerOverlay';
+      overlay.innerHTML = `
+        <div class="winner-message pulse">
+          🎉 TRIS DI ${playerName.toUpperCase()}!
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const drumroll = new Audio('drumroll.mp3');
+      drumroll.play();
+
+      for (let i = 0; i < 40; i++) {
+        const coin = document.createElement('div');
+        coin.className = 'coin';
+        coin.innerText = '💰';
+        coin.style.left = Math.random() * 100 + 'vw';
+        coin.style.animationDuration = (1 + Math.random() * 1.5) + 's';
+        coin.style.fontSize = Math.random() * 1 + 1.4 + 'rem';
+        coin.style.opacity = Math.random();
+        coin.style.transform = `rotate(${Math.random() * 360}deg)`;
+        overlay.appendChild(coin);
+      }
+
+      setTimeout(() => overlay.remove(), 4000);
+
+      const me = Object.values(playerNames).find(name => name === playerName);
+      if (me && playerStats[me]) {
+        playerStats[me].total += 3 * (discardMap.length - 1);
+        playerStats[me].hands += 0;
+      }
+
+      updateScoreTable(
+        Object.entries(playerStats).map(([name, { total }]) => ({ name, balance: total }))
+      );
+    }
+  }
+});
+
 
 
 
@@ -888,127 +985,39 @@ socket.on('notYourTurn', () => {
   updateButtons();
 });
 
+
+
 socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores }) => {
+  if (!Array.isArray(finalScores)) {
+    console.warn('⚠️ Nessun finalScores ricevuto o non è un array', finalScores);
+    return;
+  }
+
+  console.log('✅ FINAL SCORES:', finalScores);
+  console.log('🔑 socket.id:', socket.id);
+
+  const myScore = Array.isArray(finalScores)
+  ? finalScores.find(p => p.id === socket.id)
+  : null;
+
+if (!myScore) {
+  console.warn('⚠️ Nessun punteggio trovato per il giocatore attuale');
+  console.log('🔍 ID giocatore:', socket.id);
+  console.log('📊 FinalScores IDs:', finalScores?.map?.(p => p.id));
+  return;
+}
+
+
   const name = winnerName || playerNames[winner] || 'Qualcuno';
   const isMe = winner === socket.id;
 
   updateStatus(isMe ? `🏆 Hai vinto! ${reason}` : `💀 ${name} ${reason}`);
   document.getElementById('actions').style.display = 'none';
-  
-  // Mostra sempre il bottone per nuova mano all'host
+
   const newRoundBtn = document.getElementById('newRoundBtn');
   if (newRoundBtn) {
     newRoundBtn.style.display = isHost ? 'inline-block' : 'none';
   }
-
-  // 🎬 Mostra overlay con combinazione speciale se presente
-  const comboMatch = reason.match(/combinazione speciale: (.+)/i);
-  if (comboMatch) {
-    const overlay = document.getElementById('specialOverlay');
-    if (overlay) {
-      const comboTitle = overlay.querySelector('.combo-title');
-      const comboPlayer = overlay.querySelector('.combo-player');
-
-      if (comboTitle) comboTitle.textContent = comboMatch[1].toUpperCase();
-      if (comboPlayer) comboPlayer.textContent = `di ${name}`;
-      overlay.classList.remove('hidden');
-
-      const drumroll = new Audio('drumroll.mp3');
-      drumroll.play();
-
-      if (isMe) {
-        const cards = document.querySelectorAll('#bottom-hand .card');
-        cards.forEach(c => c.classList.add('special-animate'));
-        setTimeout(() => cards.forEach(c => c.classList.remove('special-animate')), 4000);
-      }
-
-      setTimeout(() => overlay.classList.add('hidden'), 4000);
-    }
-  }
-
-  // 💰 Overlay animazione vincita
-  const winOverlay = document.createElement('div');
-  winOverlay.id = 'winnerOverlay';
-  winOverlay.innerHTML = `
-    <div class="winner-message pulse">
-      🎉 ${name} ha vinto <span id="countUp">0</span>€
-    </div>
-  `;
-  document.body.appendChild(winOverlay);
-
-  // Coin animation
-  for (let i = 0; i < 40; i++) {
-    const coin = document.createElement('div');
-    coin.className = 'coin';
-    coin.innerText = '💰';
-    coin.style.left = Math.random() * 100 + 'vw';
-    coin.style.animationDuration = (1 + Math.random() * 1.5) + 's';
-    coin.style.fontSize = Math.random() * 1 + 1.4 + 'rem';
-    coin.style.opacity = Math.random();
-    coin.style.transform = `rotate(${Math.random() * 360}deg)`;
-    winOverlay.appendChild(coin);
-  }
-
-  // Contatore dinamico
-  const counter = winOverlay.querySelector('#countUp');
-  let current = 0;
-  const duration = 2000;
-  const increment = Math.ceil(totalWinnings / (duration / 50));
-
-  const interval = setInterval(() => {
-    current += increment;
-    if (current >= totalWinnings) {
-      current = totalWinnings;
-      clearInterval(interval);
-    }
-    counter.textContent = current;
-  }, 50);
-
-  setTimeout(() => winOverlay.remove(), 4000);
-  if (Array.isArray(finalScores)) updateScoreTable(finalScores);
-
-  if (winner === socket.id && finalScores?.length >= 2) {
-    const myScore = finalScores.find(p => p.id === socket.id);
-    const opponents = finalScores.filter(p => p.id !== socket.id);
-  
-    const lowerOpponent = opponents.find(p => p.score < myScore.score);
-    if (lowerOpponent) {
-      const lowerPos = Object.keys(playerNames).find(
-        id => playerNames[id] === lowerOpponent.name
-      );
-  
-      // 🔎 Conta gli assi nella sua mano
-      const hisHand = lowerOpponent.hand || [];
-      const aceCount = hisHand.filter(c => c.value === 'A').length;
-  
-      // 🔎 Conta i Re scartati
-      const discardedKings = (lowerOpponent.discarded || []).filter(c => c.value === 'K').length;
-  
-      const playersCount = finalScores.length;
-      const penaltyEach = 1 + aceCount + discardedKings;
-      const totalPenalty = penaltyEach * playersCount;
-  
-      // 📉 Scala dal vincitore e aggiunge all'altro
-      myScore.balance -= totalPenalty;
-      lowerOpponent.balance += totalPenalty;
-  
-      updateStatus(`😬 Hai chiuso ma ${lowerOpponent.name} aveva meno punti. Paghi ${totalPenalty}€`);
-  
-      // 💡 Overlay animazione
-      const overlay = document.createElement('div');
-      overlay.className = 'penalty-overlay';
-      overlay.innerHTML = `
-        <div class="penalty-message">
-          😓 Penalità Kang! Hai pagato <b>${totalPenalty}€</b> a <b>${lowerOpponent.name}</b><br>
-          (1€ chiusura + ${aceCount} Assi + ${discardedKings} Re) × ${playersCount} giocatori
-        </div>
-      `;
-      document.body.appendChild(overlay);
-  
-      setTimeout(() => overlay.remove(), 4000);
-    }
-  }
-  
 
   if (Array.isArray(finalScores)) {
     updateScoreTable(finalScores);
@@ -1019,10 +1028,12 @@ socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores
       playerStats[name].total += balance;
       playerStats[name].hands += 1;
     });
-  
     updateSummaryTable();
   }
 });
+
+
+
 
 
 socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {
@@ -1039,6 +1050,23 @@ socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {
       }
     }
   });
+});
+
+socket.on('kang_result', data => {
+  console.log("Risultato KANG ricevuto:", data);
+
+  const resultsDiv = document.getElementById('results');
+  if (resultsDiv) {
+    resultsDiv.innerHTML = '<h3>Risultati della partita:</h3>' +
+      data.scores.map(player => `
+        <div>
+          <strong>${player.name}</strong>: 
+          Punti = ${player.score}, 
+          Carte: ${player.hand.map(c => c.value + c.suit).join(', ')}
+        </div>
+      `).join('') +
+      `<p>Combinazione chiamata: <strong>${data.combination.combination}</strong></p>`;
+  }
 });
 
 
