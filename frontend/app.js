@@ -1,5 +1,5 @@
 // ✅ app.js completo e fixato
-const socket = io("https://three5otto.onrender.com"
+const socket = io("http://localhost:3002"
 );
 let playerHand = [];
 let selectedIndexes = [];
@@ -7,14 +7,60 @@ let currentPhase = null;
 let isMyTurn = false;
 let localPlayerIndex = null;
 let isHost = false;
-let playerName = '';
 let firstDeal = true;
 let roundNumber = 1;
-const playerNames = {};
 let discardMap = [];
 let pendingTrisValue = null;
 let pendingTrisChecked = false;
 let hasDrawnOnce = false; // definiscila globale in alto
+
+let balanceHistory = [];
+let currentTotals = {};
+let currentHand = 1;
+let playerNames = [];
+
+function initBalanceTable(players) {
+  playerNames = players;
+  currentTotals = {};
+  players.forEach(name => currentTotals[name] = 0);
+
+  const headerRow = document.querySelector("#balanceTable thead tr");
+  const totalRow = document.querySelector("#totalRow");
+  players.forEach(name => {
+    const th = document.createElement("th");
+    th.textContent = name;
+    headerRow.appendChild(th);
+
+    const td = document.createElement("td");
+    td.id = `total-${name}`;
+    td.textContent = "+0";
+    totalRow.appendChild(td);
+  });
+}
+
+function updateBalanceTable(scoreData) {
+  const row = document.createElement("tr");
+  const manoCell = document.createElement("td");
+  manoCell.textContent = currentHand++;
+  row.appendChild(manoCell);
+
+  playerNames.forEach(name => {
+    const player = scoreData.find(p => p.name === name);
+    const td = document.createElement("td");
+    const diff = player.balance;
+    td.textContent = diff > 0 ? `+${diff}` : diff;
+    td.className = diff > 0 ? "positive" : (diff < 0 ? "negative" : "");
+    row.appendChild(td);
+
+    currentTotals[name] += diff;
+    const totalCell = document.getElementById(`total-${name}`);
+    totalCell.textContent = currentTotals[name] > 0 ? `+${currentTotals[name]}` : currentTotals[name];
+    totalCell.className = currentTotals[name] > 0 ? "positive" : (currentTotals[name] < 0 ? "negative" : "");
+  });
+
+  document.querySelector("#balanceTable tbody").appendChild(row);
+}
+
 
 
 const statusEl = document.getElementById('status');
@@ -28,6 +74,7 @@ const autoBtn = document.getElementById('autoDiscardBtn');
 const dealSound = new Audio('deal.mp3');
 const style = document.createElement('style');
 const playerStats = {};
+
 style.innerHTML = `
 #winnerOverlay {
   position: fixed;
@@ -136,6 +183,25 @@ function updateScoreTable(scores) {
   }
 }
 
+function updateSummaryTable() {
+  const table = document.getElementById('summaryTable');
+  if (!table) return;
+
+  table.innerHTML = `
+    <thead>
+      <tr><th>Giocatore</th><th>Bilancio</th><th>Mani giocate</th></tr>
+    </thead>
+    <tbody>
+      ${Object.entries(playerStats).map(([name, stats]) =>
+        `<tr>
+          <td>${name}</td>
+          <td>${stats.total.toFixed(2)}€</td>
+          <td>${stats.hands}</td>
+        </tr>`
+      ).join('')}
+    </tbody>
+  `;
+}
 
 
 // ⚠️ FIX ANIMATION BUG
@@ -422,25 +488,6 @@ function updateKingPile(pileId, card, count) {
   }
 }
 
-function updateScoreTable(scores) {
-  if (!Array.isArray(scores)) return;
-
-  const balanceTable = document.getElementById('balanceScoreTable');
-  if (balanceTable) {
-    const tbody = balanceTable.querySelector('tbody');
-    if (tbody) {
-      tbody.innerHTML = '';
-      scores.forEach(({ name, balance }) => {
-        if (name && balance !== undefined) {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${name}</td><td>${balance.toFixed(2)}€</td>`;
-          tbody.appendChild(row);
-        }
-      });
-    }
-    balanceTable.style.display = 'table';
-  }
-}
 
 function animateDiscard(cardEl, targetEl) {
   const clone = cardEl.cloneNode(true);
@@ -579,28 +626,6 @@ if (special && hand.length === 5) {
     updateStatus(`✨ Hai una combinazione speciale: ${special.combination} (x${special.multiplier})`);
   }
 });
-
-socket.on('showSpecialCombo', ({ type, value, player }) => {
-  const overlay = document.createElement('div');
-  overlay.id = 'specialComboOverlay';
-  overlay.className = 'combo-fx';
-
-  overlay.innerHTML = `
-    <div class="combo-message">
-      <span class="combo-icon">🎉</span>
-      <span class="combo-text">${type.toUpperCase()} DI ${value.toUpperCase()}<br><small>(${player})</small></span>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const fxSound = new Audio('combo.mp3');
-  fxSound.play();
-
-  setTimeout(() => overlay.remove(), 4000);
-});
-
-
 
 
 
@@ -988,50 +1013,69 @@ socket.on('notYourTurn', () => {
 
 
 socket.on('gameEnded', ({ winner, winnerName, totalWinnings, reason, finalScores }) => {
+  console.log('🔥 GAME ENDED TRIGGERED:', { winner, winnerName, totalWinnings, reason, finalScores });
+
   if (!Array.isArray(finalScores)) {
     console.warn('⚠️ Nessun finalScores ricevuto o non è un array', finalScores);
     return;
   }
 
-  console.log('✅ FINAL SCORES:', finalScores);
-  console.log('🔑 socket.id:', socket.id);
+  const myScore = finalScores.find(p => p.id === socket.id);
+  if (!myScore) {
+    console.warn('⚠️ Nessun punteggio trovato per il giocatore attuale');
+    return;
+  }
 
-  const myScore = Array.isArray(finalScores)
-  ? finalScores.find(p => p.id === socket.id)
-  : null;
-
-if (!myScore) {
-  console.warn('⚠️ Nessun punteggio trovato per il giocatore attuale');
-  console.log('🔍 ID giocatore:', socket.id);
-  console.log('📊 FinalScores IDs:', finalScores?.map?.(p => p.id));
-  return;
-}
-
-
+ 
+  
   const name = winnerName || playerNames[winner] || 'Qualcuno';
   const isMe = winner === socket.id;
 
   updateStatus(isMe ? `🏆 Hai vinto! ${reason}` : `💀 ${name} ${reason}`);
   document.getElementById('actions').style.display = 'none';
 
-  const newRoundBtn = document.getElementById('newRoundBtn');
-  if (newRoundBtn) {
-    newRoundBtn.style.display = isHost ? 'inline-block' : 'none';
+  // 👉 MOSTRA OVERLAY D'ORO
+  const overlay = document.createElement('div');
+  overlay.id = 'winnerOverlay';
+  overlay.innerHTML = `
+    <div class="winner-message">🏆 ${name.toUpperCase()} HA VINTO ${totalWinnings || '1'}€</div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Monete
+  for (let i = 0; i < 40; i++) {
+    const coin = document.createElement('div');
+    coin.className = 'coin';
+    coin.innerText = '💰';
+    coin.style.left = `${Math.random() * 100}vw`;
+    coin.style.animationDuration = `${1 + Math.random()}s`;
+    document.body.appendChild(coin);
+    setTimeout(() => coin.remove(), 2000);
   }
 
-  if (Array.isArray(finalScores)) {
-    updateScoreTable(finalScores);
-    finalScores.forEach(({ name, balance }) => {
-      if (!playerStats[name]) {
-        playerStats[name] = { total: 0, hands: 0 };
-      }
-      playerStats[name].total += balance;
-      playerStats[name].hands += 1;
-    });
-    updateSummaryTable();
-  }
+  setTimeout(() => overlay.remove(), 4000);
+
+  const newRoundBtn = document.getElementById('newRoundBtn');
+  if (newRoundBtn) newRoundBtn.style.display = isHost ? 'inline-block' : 'none';
+
+  finalScores.forEach(({ name, balance }) => {
+    if (!playerStats[name]) {
+      playerStats[name] = { total: 0, hands: 0 };
+    }
+    playerStats[name].total += balance;
+    playerStats[name].hands += 1;
+  });
+
+  // Tabella punteggi
+  updateScoreTable(finalScores);
+  updateSummaryTable();
+
 });
 
+socket.on('showNewRoundButton', () => {
+  const btn = document.getElementById('newRoundBtn');
+  if (btn) btn.style.display = 'block';
+});
 
 
 
@@ -1053,21 +1097,97 @@ socket.on('updateOpponentHand', ({ playerId, cardsLeft }) => {
 });
 
 socket.on('kang_result', data => {
-  console.log("Risultato KANG ricevuto:", data);
+  
+  console.log("📩 Risultato KANG ricevuto:", data);
+  if (!data || !Array.isArray(data.scores)) return;
 
   const resultsDiv = document.getElementById('results');
-  if (resultsDiv) {
-    resultsDiv.innerHTML = '<h3>Risultati della partita:</h3>' +
-      data.scores.map(player => `
-        <div>
-          <strong>${player.name}</strong>: 
-          Punti = ${player.score}, 
-          Carte: ${player.hand.map(c => c.value + c.suit).join(', ')}
-        </div>
-      `).join('') +
-      `<p>Combinazione chiamata: <strong>${data.combination.combination}</strong></p>`;
+  if (!resultsDiv) return;
+
+  const caller = data.scores.find(p => p.id === data.callerId);
+  const vincitore = data.scores.find(p => p.balance > 0);
+  const guadagno = Math.abs(caller?.balance ?? 0);
+  const chiamante = caller?.name?.toUpperCase() || 'QUALCUNO';
+  const destinatario = vincitore?.name?.toUpperCase() || 'QUALCUNO';
+
+  const haVinto = vincitore?.id === data.callerId;
+  const haPerso = vincitore?.id !== data.callerId;
+
+  const totalPlayers = data.scores.length;
+  const assi = vincitore?.hand?.filter(c => c.value === 'A').length || 0;
+  const re = vincitore?.discarded?.filter(c => c.value === 'K').length || 0;
+  const perPlayer = 1 + assi + re;
+  const multiplier = haVinto ? (totalPlayers - 1) : totalPlayers;
+  const breakdown = `(${perPlayer}€ = 1€ chiusura + ${assi} assi + ${re} re) × ${multiplier} = ${perPlayer * multiplier}€`;
+
+  let message = '';
+
+  if (haPerso && guadagno > 0) {
+    message = `💸 ${chiamante} HA PAGATO ${guadagno}€ A ${destinatario}`;
+  } else if (haVinto && guadagno > 0) {
+    message = `🎉 ${chiamante} HA VINTO ${guadagno}€ 🎉`;
+  } else {
+    message = `😐 ${chiamante} NON HA VINTO NÉ PERSO`;
   }
+
+  message += `<br><small>${breakdown}</small>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'winnerOverlay';
+  overlay.innerHTML = `<div class="winner-message pulse">${message}</div>`;
+  document.body.appendChild(overlay);
+
+  for (let i = 0; i < 40; i++) {
+    const coin = document.createElement('div');
+    coin.className = 'coin';
+    coin.innerText = '💰';
+    coin.style.left = `${Math.random() * 100}vw`;
+    coin.style.animationDuration = `${1 + Math.random()}s`;
+    coin.style.fontSize = `${1 + Math.random()}rem`;
+    coin.style.opacity = Math.random();
+    coin.style.transform = `rotate(${Math.random() * 360}deg)`;
+    overlay.appendChild(coin);
+  }
+
+  new Audio('drumroll.mp3').play();
+  setTimeout(() => overlay.remove(), 5000);
+
+  resultsDiv.style.display = 'block';
+  resultsDiv.innerHTML = `
+    <h3>🃏 Risultati della mano:</h3>
+    <p><strong>${caller?.name || 'Qualcuno'}</strong> ha chiamato Kang e ${haPerso ? 'ha perso' : haVinto ? 'ha vinto' : 'non ha guadagnato nulla'} <strong>${guadagno}€</strong></p>
+    ${data.scores.map(player => `
+      <div>
+        <strong>${player.name}</strong>: ${player.score} punti<br/>
+        Carte: ${player.hand.map(c => c.value + c.suit).join(', ')}
+      </div>
+    `).join('')}
+    <p>Combinazione: <strong>${data.combination?.combination || 'nessuna'}</strong></p>
+  `;
+
+  drawBtn.disabled = true;
+  discardBtn.disabled = true;
+  kangBtn.disabled = true;
+
+  const newRoundBtn = document.getElementById('newRoundBtn');
+  if (newRoundBtn) newRoundBtn.style.display = 'inline-block';
+
+  if (data.scores && Array.isArray(data.scores)) {
+    // Solo alla prima volta inizializza la tabella
+    if (playerNames.length === 0) {
+      initBalanceTable(data.scores.map(p => p.name));
+    }
+    updateBalanceTable(data.scores);
+  }
+  
 });
+
+
+
+
+
+
+
 
 
 // UI Handlers

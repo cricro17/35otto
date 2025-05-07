@@ -6,96 +6,217 @@
   <title>358 Online</title>
   <link rel="stylesheet" href="style.css"/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols&display=swap">
+  <style>
+    .layout-wrapper {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    #sidebar {
+  position: fixed;
+  top: 80px;
+  right: 30px;
+  background: rgba(25, 25, 35, 0.95);
+  padding: 20px;
+  border-radius: 12px;
+  color: #ddd;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.12);
+  z-index: 999;
+  width: 240px;
+}
+
+#sidebar table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+#sidebar th {
+  color: #aaa;
+  font-weight: bold;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #444;
+}
+
+#sidebar td {
+  padding: 4px 8px;
+  text-align: center;
+}
+
+#sidebar .positive {
+  color: #00ff88;
+}
+
+#sidebar .negative {
+  color: #ff4d4d;
+}
+
+#sidebar .neutral {
+  color: #aaa;
+}
+
+
+  </style>
 </head>
 <body>
-  <div class="game-container">
-    <header>
-      <h1>358 Online <span class="emoji">🂴</span></h1>
-      <div class="lobby-controls">
-        <input type="text" id="playerName" placeholder="Il tuo nome"/>
-        <button id="create">Crea partita</button>
-        <select id="maxPlayers">
-          <option value="3">3 giocatori</option>
-          <option value="4">4 giocatori</option>
-        </select>
-        <input type="text" id="roomCode" placeholder="Codice stanza"/>
-        <button id="join">Entra nella partita</button>
-        <button id="startGame" style="display:none;">Avvia Partita</button>
-      </div>
-      <p id="status" tabindex="0">In attesa dei giocatori...</p>
-      <div id="roundCounter" class="round-counter hidden">Mano n°1</div>
-      <button id="newRoundBtn" style="display:none; margin-top: 10px;">Nuova Mano</button>
+  <div class="layout-wrapper">
+    <div class="game-container">
+      <header>
+        <h1>358 Online <span class="emoji">�킴</span></h1>
+        <div class="lobby-controls">
+          <input type="text" id="playerName" placeholder="Il tuo nome"/>
+          <button id="create">Crea partita</button>
+          <select id="maxPlayers">
+            <option value="3">3 giocatori</option>
+            <option value="4">4 giocatori</option>
+          </select>
+          <input type="text" id="roomCode" placeholder="Codice stanza"/>
+          <button id="join">Entra nella partita</button>
+          <button id="startGame" style="display:none;">Avvia Partita</button>
+        </div>
+        <p id="status" tabindex="0">In attesa dei giocatori...</p>
+        <div id="roundCounter" class="round-counter hidden">Mano n°1</div>
+        <button id="newRoundBtn" style="display:none; margin-top: 10px;">Nuova Mano</button>
+      </header>
 
-    </header>
+      <main>
+        <div class="table">
+          <div class="player top">
+            <div class="name">pollo</div>
+            <div class="hand other-hand" id="top-hand"></div>
+            <div class="discards">
+              <div class="pile pile-k" id="top-pile-k"></div>
+              <div class="pile pile-normal" id="top-pile"></div>
+            </div>
+          </div>
 
-    <main>
-      <div class="table">
-        <div class="player top">
-          <div class="name">pollo</div>
-          <div class="hand other-hand" id="top-hand"></div>
-          <div class="discards">
-            <div class="pile pile-k" id="top-pile-k"></div>
-            <div class="pile pile-normal" id="top-pile"></div>
+          <div class="player right">
+            <div class="name">Giocatore 2</div>
+            <div class="discards">
+              <div class="pile pile-k" id="right-pile-k"></div>
+              <div class="pile pile-normal" id="right-pile"></div>
+            </div>
+            <div class="hand other-hand" id="right-hand"></div>
+          </div>
+
+          <div class="player bottom">
+            <div class="name">Tu</div>
+            <div class="discards">
+              <div class="pile pile-k" id="bottom-pile-k"></div>
+              <div class="pile pile-normal" id="bottom-pile"></div>
+            </div>
+            <div class="hand" id="bottom-hand"></div>
+          </div>
+
+          <div class="player left">
+            <div class="name">Giocatore 3</div>
+            <div class="discards">
+              <div class="pile pile-k" id="left-pile-k"></div>
+              <div class="pile pile-normal" id="left-pile"></div>
+            </div>
+            <div class="hand other-hand" id="left-hand"></div>
           </div>
         </div>
-      
-        <div class="player right">
-          <div class="name">Giocatore 2</div>
-          <div class="discards">
-            <div class="pile pile-k" id="right-pile-k"></div>
-            <div class="pile pile-normal" id="right-pile"></div>
+
+        <section id="actions" style="display: none;">
+          <div class="hand" id="hand"></div>
+          <div class="action-buttons">
+            <button id="drawBtn">Pesca</button>
+            <button id="discardBtn">Scarta</button>
+            <button id="kangBtn">Kang</button>
+            <button id="autoDiscardBtn" style="display: none;">Scarta automaticamente</button>
           </div>
-          <div class="hand other-hand" id="right-hand"></div>
+        </section>
+
+        <div id="specialOverlay" class="hidden">
+          <div class="combo-content"></div>
         </div>
-    
-        <div class="player bottom">
-          <div class="name">Tu</div>
-          <div class="discards">
-            <div class="pile pile-k" id="bottom-pile-k"></div>
-            <div class="pile pile-normal" id="bottom-pile"></div>
-          </div>
-          <div class="hand" id="bottom-hand"></div>
+
+        <div id="specialComboOverlay" class="hidden">
+          <div id="comboMessage" class="combo-message"></div>
         </div>
-    
-        <div class="player left">
-          <div class="name">Giocatore 3</div>
-          <div class="discards">
-            <div class="pile pile-k" id="left-pile-k"></div>
-            <div class="pile pile-normal" id="left-pile"></div>
-          </div>
-          <div class="hand other-hand" id="left-hand"></div>
-        </div>
-      </div>
-  
-      <section id="actions" style="display: none;">
-        <div class="hand" id="hand"></div>
-        <div class="action-buttons">
-          <button id="drawBtn">Pesca</button>
-          <button id="discardBtn">Scarta</button>
-          <button id="kangBtn">Kang</button>
-          <button id="autoDiscardBtn" style="display: none;">Scarta automaticamente</button>
-        </div>
-      </section>
- 
-      <div id="specialOverlay" class="hidden">
-        <div class="combo-content">
-        </div>
-      </div>
-      
-      
-   <div id="specialComboOverlay" class="hidden">
-    <div id="comboMessage" class="combo-message">
-     </div>
+
+        <ul id="playersList"></ul>
+        <div id="results" class="results-panel" style="margin-top: 20px;"></div>
+      </main>
     </div>
 
-
-      <h2>Giocatori nella stanza</h2>
-      <ul id="playersList"></ul>     
-      <div id="results" class="results-panel"></div>
-    </main>
+    <aside id="sidebar">
+      <h3>Andamento Partita</h3>
+      <table id="balanceTable">
+        <thead>
+          <tr>
+            <th>Mano</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="totalRow">
+            <td><strong>Saldo Totale</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </aside>
   </div>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="app.js"></script>
+
+  <script>
+    let currentTotals = {};
+    let currentHand = 1;
+    let playerNames = [];
+    
+    function initBalanceTable(players) {
+      playerNames = players;
+      currentTotals = {};
+      players.forEach(name => currentTotals[name] = 0);
+    
+      const headerRow = document.querySelector("#balanceTable thead tr");
+      const totalRow = document.querySelector("#totalRow");
+    
+      // Pulizia se già popolato
+      headerRow.innerHTML = "<th>Mano</th>";
+      totalRow.innerHTML = "<td><strong>Saldo Totale</strong></td>";
+    
+      players.forEach(name => {
+        const th = document.createElement("th");
+        th.textContent = name;
+        headerRow.appendChild(th);
+    
+        const td = document.createElement("td");
+        td.id = `total-${name}`;
+        td.textContent = "+0";
+        totalRow.appendChild(td);
+      });
+    }
+    
+    function updateBalanceTable(scoreData) {
+      const row = document.createElement("tr");
+      const manoCell = document.createElement("td");
+      manoCell.textContent = currentHand++;
+      row.appendChild(manoCell);
+    
+      playerNames.forEach(name => {
+        const player = scoreData.find(p => p.name === name);
+        const td = document.createElement("td");
+        const diff = player?.balance || 0;
+        td.textContent = diff > 0 ? `+${diff}` : diff;
+        td.className = diff > 0 ? "positive" : (diff < 0 ? "negative" : "");
+        row.appendChild(td);
+    
+        currentTotals[name] += diff;
+        const totalCell = document.getElementById(`total-${name}`);
+        totalCell.textContent = currentTotals[name] > 0 ? `+${currentTotals[name]}` : currentTotals[name];
+        totalCell.className = currentTotals[name] > 0 ? "positive" : (currentTotals[name] < 0 ? "negative" : "");
+      });
+    
+      document.querySelector("#balanceTable tbody").appendChild(row);
+    }
+    </script>
+    
 </body>
 </html>

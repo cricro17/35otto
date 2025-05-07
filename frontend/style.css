@@ -1056,5 +1056,128 @@ body, main {
   margin-top: 0;
 }
 
+.results-panel {
+  background-color: #111827;
+  color: #f1f5f9;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-family: 'Noto Sans Symbols', sans-serif;
+}
+
+#specialComboOverlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(#000 0%, #111 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  font-size: 3rem;
+  color: white;
+  font-weight: bold;
+  animation: fadeIn 0.5s ease;
+  text-align: center;
+  padding: 20px;
+  line-height: 1.4;
+}
+
+.cinematic-text {
+  animation: pulseText 1.5s infinite;
+}
+
+.cinematic-final {
+  font-size: 4rem;
+  color: gold;
+  text-shadow: 0 0 20px gold;
+  animation: glowPulse 1.5s ease-in-out infinite;
+}
+
+.gold {
+  color: gold;
+  text-shadow: 1px 1px 6px gold;
+}
+
+@keyframes pulseText {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+@keyframes glowPulse {
+  0% { text-shadow: 0 0 10px gold; }
+  50% { text-shadow: 0 0 30px gold; }
+  100% { text-shadow: 0 0 10px gold; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#balanceTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111;
+  color: white;
+  font-family: monospace;
+}
+
+#balanceTable th,
+#balanceTable td {
+  border: 1px solid #444;
+  padding: 6px 12px;
+  text-align: center;
+}
+
+#balanceTable th {
+  background-color: #222;
+}
+
+#balanceTable td.positive {
+  color: lime;
+}
+
+#balanceTable td.negative {
+  color: tomato;
+}
+
+.layout-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+}
+
+.game-container {
+  flex: 1 1 auto;
+  max-width: 1000px;
+}
+
+
+
+#sidebar {
+    flex: 0 0 260px;
+    background: #111;
+    color: white;
+    padding: 10px;
+    border-left: 2px solid #333;
+    height: 100vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    font-family: monospace;
+    z-index: 10;
+}
+
+#sidebar h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+}
 
 }
